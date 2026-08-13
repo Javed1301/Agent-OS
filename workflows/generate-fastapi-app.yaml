@@ -1,0 +1,20 @@
+name: generate-fastapi-app
+version: 1.0.0
+description: Plan, build, and review a FastAPI application sequentially.
+
+steps:
+  - id: plan
+    agent: planner-agent
+    input:
+      goal: ${workflow.input.goal}
+
+  - id: build
+    agent: code-generator-agent
+    input:
+      plan: ${plan.output.plan}
+      goal: ${workflow.input.goal}
+
+  - id: review
+    agent: reviewer-agent
+    input:
+      files: ${build.artifacts}

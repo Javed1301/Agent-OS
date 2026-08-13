@@ -1,0 +1,12 @@
+{
+  "id": "exec_20260812_09b4e733",
+  "agentId": "hate-speech-detector",
+  "input": {
+    "text": "People from that race are all untrustworthy and should not be allowed to work."
+  },
+  "status": "cancelled",
+  "startTime": "2026-08-12T05:34:45.876Z",
+  "logPath": "D:\\Javed\\Agent-Dashboard\\database\\logs\\exec_20260812_09b4e733.log",
+  "endTime": "2026-08-12T05:34:48.914Z",
+  "durationMs": 3038
+}

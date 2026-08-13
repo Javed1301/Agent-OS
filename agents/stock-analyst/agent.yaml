@@ -1,0 +1,42 @@
+id: stock-analyst
+name: Financial Stock Analyst
+version: 1.0.0
+description: |
+  A 4-agent parallel CrewAI crew that fetches financial data, gathers latest news, performs analysis, and produces a structured investment recommendation (BUY/HOLD/SELL) with confidence score and target price. Uses parallel execution for data gathering phase, then sequential analysis.
+category: Finance
+type: python
+entrypoint: stock-analyst
+workingDirectory: agents/stock-analyst
+capabilities:
+  - financial-analysis
+  - stock-research
+  - news-gathering
+  - investment-recommendation
+  - web-search
+  - parallel-execution
+inputs:
+  stock:
+    type: string
+    required: true
+    description: |
+      Stock ticker symbol to analyze. For Indian stocks, use NSE symbol (e.g. RELIANCE, TCS, INFY). For US stocks use standard ticker (e.g. AAPL, TSLA).
+outputs:
+  recommendation:
+    type: string
+healthcheck:
+  type: subprocess
+  requiredEnv:
+    - OPENROUTER_API_KEY
+    - EXA_API_KEY
+icon: chart
+phase: 1
+usesWdLock: true
+outputFiles:
+  - task_outputs/financial_analysis.md
+  - task_outputs/investment_recommendation.md
+source: workspace
+secrets:
+  required:
+    - OPENROUTER_API_KEY
+    - EXA_API_KEY
+  optional: []

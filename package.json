@@ -1,0 +1,25 @@
+{
+  "name": "agent-workspace",
+  "version": "2.0.0",
+  "description": "Agent Workspace — Local AI agent platform",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n gateway,dashboard -c cyan,green \"npm --workspace=apps/gateway run dev\" \"npm --workspace=apps/dashboard run dev\"",
+    "build": "npm run build --workspace=apps/gateway && npm run build --workspace=apps/dashboard",
+    "start": "concurrently -n gateway,dashboard -c cyan,green \"npm --workspace=apps/gateway run start\" \"npm --workspace=apps/dashboard run start\"",
+    "test:integration": "npm run test:integration --workspace=apps/gateway"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "keywords": ["ai", "agents", "workspace", "platform"],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

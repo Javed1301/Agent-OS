@@ -1,0 +1,18 @@
+[
+  {
+    "id": "exec_20260812_f88d4d33",
+    "agentId": "hate-speech-detector",
+    "status": "failed",
+    "startTime": "2026-08-12T05:34:32.825Z",
+    "endTime": "2026-08-12T05:34:45.868Z",
+    "durationMs": 13043
+  },
+  {
+    "id": "exec_20260812_09b4e733",
+    "agentId": "hate-speech-detector",
+    "status": "cancelled",
+    "startTime": "2026-08-12T05:34:45.876Z",
+    "endTime": "2026-08-12T05:34:48.914Z",
+    "durationMs": 3038
+  }
+]

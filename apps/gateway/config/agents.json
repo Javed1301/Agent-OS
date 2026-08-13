@@ -1,0 +1,203 @@
+{
+  "agents": [
+    {
+      "id": "hate-speech-detector",
+      "name": "Hate Speech Detector",
+      "description": "Analyzes text and determines whether it contains hate speech or offensive language targeting groups based on race, ethnicity, gender, religion, or similar attributes.",
+      "category": "Content Moderation",
+      "type": "python",
+      "capabilities": ["text-classification", "hate-speech-detection", "content-safety"],
+      "workingDirectory": "D:/Javed/outskill/outskill/agents/beginner",
+      "entrypoint": "hate-speech-detector",
+      "interpreterPath": "D:/Javed/outskill/outskill/.venv311/Scripts/python.exe",
+      "healthCheck": {
+        "type": "subprocess",
+        "requiredEnv": ["OPENROUTER_API_KEY"]
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "The text to analyze for hate speech or offensive language.",
+            "required": true
+          }
+        }
+      },
+      "outputFiles": [],
+      "usesWdLock": false,
+      "icon": "shield",
+      "phase": 1
+    },
+    {
+      "id": "devops-log-analyzer",
+      "name": "DevOps Log Analyzer",
+      "description": "A 3-agent CrewAI crew that reads a log file, identifies errors and root causes, searches online for solutions, and produces a remediation plan.",
+      "category": "DevOps",
+      "type": "python",
+      "capabilities": ["log-analysis", "error-detection", "root-cause-analysis", "web-search", "remediation-planning"],
+      "workingDirectory": "D:/Javed/outskill/outskill/agents/intermediate/v2",
+      "entrypoint": "devops-log-analyzer",
+      "interpreterPath": "D:/Javed/outskill/outskill/.venv311/Scripts/python.exe",
+      "healthCheck": {
+        "type": "subprocess",
+        "requiredEnv": ["OPENROUTER_API_KEY", "EXA_API_KEY"]
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "log_file_path": {
+            "type": "string",
+            "description": "Absolute or relative path to the log file to analyze.",
+            "required": true
+          }
+        }
+      },
+      "outputFiles": [
+        "task_outputs/log_analysis.md",
+        "task_outputs/investigation_report.md",
+        "task_outputs/solution_plan.md"
+      ],
+      "usesWdLock": true,
+      "icon": "terminal",
+      "phase": 1
+    },
+    {
+      "id": "stock-analyst",
+      "name": "Financial Stock Analyst",
+      "description": "A 4-agent parallel CrewAI crew that fetches financial data, latest news, performs analysis, and produces a structured investment recommendation (BUY/HOLD/SELL) with confidence score and target price.",
+      "category": "Finance",
+      "type": "python",
+      "capabilities": ["financial-analysis", "stock-research", "news-gathering", "investment-recommendation", "web-search"],
+      "workingDirectory": "D:/Javed/outskill/outskill/agents/advanced/v2",
+      "entrypoint": "stock-analyst",
+      "interpreterPath": "D:/Javed/outskill/outskill/.venv311/Scripts/python.exe",
+      "healthCheck": {
+        "type": "subprocess",
+        "requiredEnv": ["OPENROUTER_API_KEY", "EXA_API_KEY"]
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "stock": {
+            "type": "string",
+            "description": "Stock ticker symbol to analyze (e.g. AAPL, TSLA, GOOGL).",
+            "required": true
+          }
+        }
+      },
+      "outputFiles": [
+        "task_outputs/financial_analysis.md",
+        "task_outputs/investment_recommendation.md"
+      ],
+      "usesWdLock": true,
+      "icon": "chart",
+      "phase": 1
+    },
+    {
+      "id": "podcaster-crew",
+      "name": "Podcaster Crew",
+      "description": "A 3-agent CrewAI crew (Researcher, Reporting Analyst, Scriptwriter) that researches a topic, produces a report, writes a podcast script, and optionally generates audio via Gemini.",
+      "category": "Content Creation",
+      "type": "python",
+      "capabilities": ["research", "report-writing", "podcast-scripting", "voice-generation"],
+      "workingDirectory": "D:/Javed/outskill/podcaster_crew",
+      "entrypoint": "podcaster-crew",
+      "interpreterPath": "D:/Javed/outskill/podcaster_crew/.venv/Scripts/python.exe",
+      "healthCheck": {
+        "type": "subprocess",
+        "requiredEnv": ["GEMINI_API_KEY", "SERPER_API_KEY"]
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string",
+            "description": "The podcast topic to research and script.",
+            "required": true,
+            "default": "AI LLMs"
+          }
+        }
+      },
+      "outputFiles": [],
+      "usesWdLock": true,
+      "icon": "microphone",
+      "phase": 1,
+      "configuration": {
+        "note": "Output files use timestamps (outputs/report-<ts>.md, outputs/script-<ts>.md). runner.py globs outputs/ for the latest files post-kickoff."
+      }
+    },
+    {
+      "id": "myntra-rag",
+      "name": "Myntra RAG Catalog",
+      "description": "A LangChain + FAISS retrieval-augmented generation system over a Myntra product catalog. Supports single-shot queries via multiple OpenRouter models.",
+      "category": "Knowledge / RAG",
+      "type": "python",
+      "capabilities": ["product-search", "rag", "multi-model", "vector-search"],
+      "workingDirectory": "D:/Javed/outskill/outskill/rags/myntra_rag",
+      "entrypoint": "myntra-rag",
+      "interpreterPath": "D:/Javed/outskill/outskill/.venv311/Scripts/python.exe",
+      "healthCheck": {
+        "type": "subprocess",
+        "requiredEnv": ["OPENROUTER_API_KEY", "GEMINI_API_KEY"]
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "The product search query.",
+            "required": true
+          },
+          "model": {
+            "type": "string",
+            "description": "OpenRouter model shorthand (e.g. gpt-3.5-turbo, claude-3-haiku).",
+            "default": "gpt-3.5-turbo",
+            "required": false
+          }
+        }
+      },
+      "outputFiles": [],
+      "usesWdLock": false,
+      "icon": "search",
+      "phase": 2,
+      "configuration": {
+        "note": "Phase 2 only. Requires FAISS vector store initialization. Default main() is an interactive REPL and cannot be driven non-interactively. runner.py bypasses main() and calls MyntraRAG(config).query() directly."
+      }
+    },
+    {
+      "id": "meeting-notes-api",
+      "name": "AI Meeting Notes API",
+      "description": "A FastAPI + CrewAI service that generates structured meeting summaries and action-item notes from raw transcripts. Requires uvicorn to be running independently at localhost:8000.",
+      "category": "Productivity",
+      "type": "rest",
+      "capabilities": ["meeting-summarization", "notes-generation", "transcript-processing", "action-item-extraction"],
+      "workingDirectory": "D:/Javed/lets-talk/ai-services",
+      "entrypoint": "http://localhost:8000",
+      "healthCheck": {
+        "type": "http",
+        "endpoint": "http://localhost:8000/health",
+        "requiredEnv": []
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "transcript_id": {
+            "type": "string",
+            "description": "ID of a previously uploaded transcript to generate notes for.",
+            "required": true
+          }
+        }
+      },
+      "outputFiles": [],
+      "usesWdLock": false,
+      "icon": "document",
+      "phase": 1,
+      "configuration": {
+        "baseUrl": "http://localhost:8000",
+        "internalSecret": "",
+        "note": "uvicorn must be started manually: `uv run uvicorn api.main:app --reload` from D:/Javed/lets-talk/ai-services. Postgres is Neon (hosted) and always available."
+      }
+    }
+  ]
+}

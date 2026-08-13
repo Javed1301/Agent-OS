@@ -1,0 +1,38 @@
+id: meeting-notes-api
+name: AI Meeting Notes API
+version: 1.0.0
+description: |
+  A FastAPI + CrewAI service that generates structured meeting summaries and action-item notes from raw transcripts. Requires uvicorn to be running independently at localhost:8000. Uses Neon Postgres (hosted, always available). 3 CrewAI agents: Summary Agent, Notes Agent, Enrichment Agent.
+category: Productivity
+type: rest
+entrypoint: http://localhost:8000
+workingDirectory: agents/meeting-notes-api
+capabilities:
+  - meeting-summarization
+  - notes-generation
+  - transcript-processing
+  - action-item-extraction
+inputs:
+  transcript_id:
+    type: string
+    required: true
+    description: ID of a previously uploaded transcript to generate notes for.
+outputs:
+  summary:
+    type: string
+  notes:
+    type: string
+healthcheck:
+  type: http
+  endpoint: http://localhost:8000/health
+  requiredEnv: []
+icon: document
+phase: 1
+usesWdLock: false
+outputFiles: []
+configuration:
+  baseUrl: http://localhost:8000
+  internalSecret: ''
+  note: |
+    uvicorn must be started manually before executing: cd D:/Javed/lets-talk/ai-services && uv run uvicorn api.main:app --reload Postgres is Neon (hosted) and always available.
+source: workspace

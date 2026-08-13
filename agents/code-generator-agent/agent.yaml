@@ -1,0 +1,39 @@
+id: code-generator-agent
+name: Code Generator Agent
+version: 1.0.0
+description: Generates files in a workspace sequentially according to subtasks.
+category: Code Generation
+type: python
+entrypoint: code-generator-agent
+workingDirectory: agents/code-generator-agent
+capabilities:
+  - code-generation
+inputs:
+  plan:
+    type: object
+    required: true
+    description: Ordered list of subtasks (JSON array of strings).
+  goal:
+    type: string
+    required: false
+    description: Original user goal.
+outputs:
+  status:
+    type: string
+  files_created:
+    type: object
+  files_modified:
+    type: object
+  summary:
+    type: string
+healthcheck:
+  type: subprocess
+  requiredEnv:
+    - GEMINI_API_KEY
+usesWdLock: false
+outputFiles: []
+source: workspace
+secrets:
+  required:
+    - GEMINI_API_KEY
+  optional: []

@@ -1,0 +1,91 @@
+# ==============================================================================
+# Agent OS / Agent Workspace — Production Monorepo .gitignore
+# ==============================================================================
+
+# --- Execution & Runtime Storage ---
+data/
+runtimes/
+uv-cache/
+*.sqlite
+*.sqlite3
+*.db
+
+# --- Dependencies & Package Managers ---
+node_modules/
+.npm/
+.yarn/
+.pnpm-store/
+
+# --- Build & Bundle Outputs ---
+dist/
+build/
+out/
+.next/
+*.tsbuildinfo
+
+# --- Environment & Secret Files ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+
+# --- Python & uv Environments ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+.uv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+.eggs/
+
+# --- Logs & Debug Outputs ---
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Temporary & Scratch Files ---
+tmp/
+temp/
+scratch/
+designs.zip
+*.bak
+*.swp
+*.tmp
+
+# --- IDE & Editor Settings ---
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# --- OS-Specific Files ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# --- Docker & Container Local Artifacts ---
+docker-compose.override.yml
+.docker/

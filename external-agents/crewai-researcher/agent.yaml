@@ -1,0 +1,29 @@
+id: crewai-researcher
+name: CrewAI Researcher Agent
+version: 1.0.0
+description: A secondary CrewAI researcher agent used to verify runtime fingerprinting and instant runtime reuse.
+category: Research
+type: python
+entrypoint: crewai-researcher
+workingDirectory: external-agents/crewai-researcher
+source: imported
+originalPath: D:/Javed/Outskill/agents/crewai-researcher
+capabilities:
+  - web-research
+inputs:
+  topic:
+    type: string
+    required: true
+    description: Topic to research
+healthcheck:
+  type: subprocess
+  requiredEnv:
+    - OPENROUTER_API_KEY
+icon: search
+phase: 1
+usesWdLock: false
+outputFiles: []
+secrets:
+  required:
+    - OPENROUTER_API_KEY
+  optional: []

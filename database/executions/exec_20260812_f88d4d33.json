@@ -1,0 +1,12 @@
+{
+  "id": "exec_20260812_f88d4d33",
+  "agentId": "hate-speech-detector",
+  "input": {
+    "text": "Public libraries are important resources for everyone in the city."
+  },
+  "status": "failed",
+  "startTime": "2026-08-12T05:34:32.825Z",
+  "logPath": "D:\\Javed\\Agent-Dashboard\\database\\logs\\exec_20260812_f88d4d33.log",
+  "endTime": "2026-08-12T05:34:45.868Z",
+  "durationMs": 13043
+}

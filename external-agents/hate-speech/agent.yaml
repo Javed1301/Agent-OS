@@ -1,0 +1,36 @@
+id: hate-speech
+name: Hate Speech Detector
+version: 1.0.0
+description: |
+  Analyzes text and determines whether it contains hate speech or offensive language targeting groups based on race, ethnicity, gender, religion, or similar attributes. Uses a single CrewAI agent via OpenRouter.
+category: Content Moderation
+type: python
+entrypoint: hate-speech-detector
+workingDirectory: external-agents/hate-speech
+source: imported
+originalPath: D:/Javed/Outskill/agents/hate-speech
+capabilities:
+  - text-classification
+  - hate-speech-detection
+  - content-safety
+  - nlp
+inputs:
+  text:
+    type: string
+    required: true
+    description: The text to analyze for hate speech or offensive language.
+outputs:
+  prediction:
+    type: string
+healthcheck:
+  type: subprocess
+  requiredEnv:
+    - OPENROUTER_API_KEY
+icon: shield
+phase: 1
+usesWdLock: false
+outputFiles: []
+secrets:
+  required:
+    - OPENROUTER_API_KEY
+  optional: []

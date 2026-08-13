@@ -1,0 +1,46 @@
+id: myntra-rag
+name: Myntra RAG Catalog
+version: 1.0.0
+description: |
+  A LangChain + FAISS retrieval-augmented generation system over a Myntra product catalog. Supports single-shot queries via multiple OpenRouter models. Requires FAISS vector store to be initialized before first run.
+category: Knowledge / RAG
+type: python
+entrypoint: myntra-rag
+workingDirectory: agents/myntra-rag
+capabilities:
+  - product-search
+  - rag
+  - multi-model
+  - vector-search
+  - semantic-search
+inputs:
+  query:
+    type: string
+    required: true
+    description: The product search query.
+  model:
+    type: string
+    required: false
+    description: OpenRouter model shorthand (e.g. gpt-3.5-turbo, claude-3-haiku).
+    default: gpt-3.5-turbo
+outputs:
+  answer:
+    type: string
+healthcheck:
+  type: subprocess
+  requiredEnv:
+    - OPENROUTER_API_KEY
+    - GEMINI_API_KEY
+icon: search
+phase: 2
+usesWdLock: false
+outputFiles: []
+configuration:
+  note: |
+    Phase 2 only. Requires FAISS vector store initialization. Default main() is an interactive REPL and cannot be driven non-interactively. runner.py bypasses main() and calls MyntraRAG(config).query() directly.
+source: workspace
+secrets:
+  required:
+    - OPENROUTER_API_KEY
+    - GEMINI_API_KEY
+  optional: []

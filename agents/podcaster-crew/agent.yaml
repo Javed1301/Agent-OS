@@ -1,0 +1,44 @@
+id: podcaster-crew
+name: Podcaster Crew
+version: 1.0.0
+description: |
+  A 3-agent CrewAI crew (Researcher, Reporting Analyst, Scriptwriter) that researches a topic using Serper web search, produces a report, and writes a podcast script. Optionally generates audio via Gemini TTS. Outputs are timestamped Markdown files in outputs/.
+category: Content Creation
+type: python
+entrypoint: podcaster-crew
+workingDirectory: agents/podcaster-crew
+capabilities:
+  - research
+  - report-writing
+  - podcast-scripting
+  - voice-generation
+  - web-search
+inputs:
+  topic:
+    type: string
+    required: true
+    description: The podcast topic to research and script.
+    default: AI LLMs
+outputs:
+  script:
+    type: string
+  report:
+    type: string
+healthcheck:
+  type: subprocess
+  requiredEnv:
+    - GEMINI_API_KEY
+    - SERPER_API_KEY
+icon: microphone
+phase: 1
+usesWdLock: true
+outputFiles: []
+configuration:
+  note: |
+    Output files use timestamps (outputs/report-<ts>.md, outputs/script-<ts>.md). runner.py globs outputs/ for the latest files post-kickoff.
+source: workspace
+secrets:
+  required:
+    - GEMINI_API_KEY
+    - SERPER_API_KEY
+  optional: []

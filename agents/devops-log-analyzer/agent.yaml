@@ -1,0 +1,42 @@
+id: devops-log-analyzer
+name: DevOps Log Analyzer
+version: 1.0.0
+description: |
+  A 3-agent CrewAI crew that reads a log file, identifies errors and root causes, searches online for solutions via Exa, and produces a remediation plan. Agents: Log Analyzer → Issue Investigator → Solution Specialist.
+category: DevOps
+type: python
+entrypoint: devops-log-analyzer
+workingDirectory: agents/devops-log-analyzer
+capabilities:
+  - log-analysis
+  - error-detection
+  - root-cause-analysis
+  - web-search
+  - remediation-planning
+inputs:
+  log_file_path:
+    type: string
+    required: true
+    description: |
+      Absolute or relative path to the log file to analyze. Example: D:/Javed/outskill/outskill/agents/dummy_logs/kubernetes_deployment_error.log
+outputs:
+  analysis_report:
+    type: string
+healthcheck:
+  type: subprocess
+  requiredEnv:
+    - OPENROUTER_API_KEY
+    - EXA_API_KEY
+icon: terminal
+phase: 1
+usesWdLock: true
+outputFiles:
+  - task_outputs/log_analysis.md
+  - task_outputs/investigation_report.md
+  - task_outputs/solution_plan.md
+source: workspace
+secrets:
+  required:
+    - OPENROUTER_API_KEY
+    - EXA_API_KEY
+  optional: []

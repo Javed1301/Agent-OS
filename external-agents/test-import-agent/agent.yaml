@@ -1,0 +1,20 @@
+id: test-import-agent
+name: Test Import Agent
+description: A test agent to verify the import mechanism works correctly.
+category: Testing
+type: python
+version: 1.0.0
+capabilities:
+  - testing
+  - import-verification
+workingDirectory: external-agents/test-import-agent
+entrypoint: runner.py
+healthcheck:
+  requiredEnv: []
+inputs:
+  message:
+    type: string
+    required: false
+    description: Test message
+    default: hello
+source: imported

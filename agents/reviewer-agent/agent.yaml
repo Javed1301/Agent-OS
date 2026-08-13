@@ -1,0 +1,33 @@
+id: reviewer-agent
+name: Reviewer Agent
+version: 1.0.0
+description: Inspects files in a generated folder and creates a markdown review.
+category: Quality Assurance
+type: python
+entrypoint: reviewer-agent
+workingDirectory: external-agents/reviewer-agent
+capabilities:
+  - code-review
+inputs:
+  files:
+    type: string
+    required: true
+    description: Absolute path to the generated files directory to inspect.
+outputs:
+  status:
+    type: string
+  passed:
+    type: boolean
+  report:
+    type: string
+healthcheck:
+  type: subprocess
+  requiredEnv:
+    - GEMINI_API_KEY
+usesWdLock: false
+outputFiles: []
+source: workspace
+secrets:
+  required:
+    - GEMINI_API_KEY
+  optional: []

@@ -1,0 +1,14 @@
+name: summarize-and-podcast
+version: 1.0.0
+description: Summarize logs and generate a podcast script from the summary.
+
+steps:
+  - id: summarize
+    agent: devops-log-analyzer
+    input:
+      log_file_path: ${workflow.input.log_file_path}
+
+  - id: podcast
+    agent: podcaster-crew
+    input:
+      topic: "DevOps Log Analysis Report"

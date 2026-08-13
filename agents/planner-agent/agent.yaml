@@ -1,0 +1,29 @@
+id: planner-agent
+name: Planner Agent
+version: 1.0.0
+description: Breaks down a user goal into structured subtasks.
+category: Orchestration
+type: python
+entrypoint: planner-agent
+workingDirectory: external-agents/planner-agent
+capabilities:
+  - planning
+inputs:
+  goal:
+    type: string
+    required: true
+    description: The user goal to plan.
+outputs:
+  plan:
+    type: object
+healthcheck:
+  type: subprocess
+  requiredEnv:
+    - GEMINI_API_KEY
+usesWdLock: false
+outputFiles: []
+source: workspace
+secrets:
+  required:
+    - GEMINI_API_KEY
+  optional: []
