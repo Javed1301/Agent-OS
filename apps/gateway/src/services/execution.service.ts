@@ -22,6 +22,7 @@ import { restAdapter } from "../adapters/rest.js";
 import { storeService } from "./store.service.js";
 import { buildSpawnEnv } from "./health.service.js";
 import { runtimeService } from "./runtime.service.js";
+import { environmentResolver } from "./environment-resolver.service.js";
 import type { AdapterHandle } from "../adapters/base.js";
 
 // ---------------------------------------------------------------------------
@@ -231,12 +232,58 @@ export const executionService = {
     storeService.updateStatus(id, "running", { startTime });
     broadcast(active, id, "status", "running");
 
-    // Touch runtime lastUsedAt if agent has an associated runtime
-    if (agent.type === "python" && agent.workingDirectory) {
+    const updatedAgent = { ...agent };
+
+    if (agent.type === "python") {
       try {
-        const depInfo = runtimeService.detectDependencies(agent.workingDirectory);
+        appendLog(`[environment] Resolving execution environment for agent: ${agent.id}`);
+        const res = await environmentResolver.resolve(
+          agent.id,
+          agent.logicalPath || agent.workingDirectory,
+          agent.entrypoint
+        );
+
+        let interpreterPath = "";
+        if (res.action === "REUSE_EXISTING") {
+          interpreterPath = res.executablePath;
+          appendLog(`[environment] Reusing compatible environment: ${interpreterPath}`);
+          broadcast(active, id, "log", `[environment] Reusing compatible environment: ${interpreterPath}`);
+        } else {
+          appendLog(`[environment] No compatible local environment found. Resolving fallback managed runtime...`);
+          broadcast(active, id, "log", `[environment] Resolving fallback managed runtime...`);
+          const buildResult = await runtimeService.resolveRuntime(
+            res.resolvedSource.sourceRoot,
+            agent.id,
+            "3.11",
+            (msg) => {
+              appendLog(msg);
+              broadcast(active, id, "log", msg);
+            }
+          );
+          interpreterPath = buildResult.interpreterPath;
+          appendLog(`[environment] Fallback managed runtime resolved: ${interpreterPath}`);
+          broadcast(active, id, "log", `[environment] Fallback managed runtime resolved: ${interpreterPath}`);
+        }
+
+        updatedAgent.workingDirectory = res.resolvedSource.sourceRoot;
+        updatedAgent.resolvedPath = res.resolvedSource.sourceRoot;
+        updatedAgent.interpreterPath = interpreterPath;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        appendLog(`[environment] Resolution failed: ${msg}`);
+        broadcast(active, id, "error", `Environment resolution failed: ${msg}`);
+        broadcast(active, id, "status", "failed");
+        handleTerminal(active, id, "failed", msg);
+        return;
+      }
+    }
+
+    // Touch runtime lastUsedAt if agent has an associated runtime
+    if (updatedAgent.type === "python" && updatedAgent.workingDirectory) {
+      try {
+        const depInfo = runtimeService.detectDependencies(updatedAgent.workingDirectory);
         if (depInfo.runtimeHash && depInfo.runtimeHash !== "none") {
-          runtimeService.associateAgent(depInfo.runtimeHash, agent.id);
+          runtimeService.associateAgent(depInfo.runtimeHash, updatedAgent.id);
         }
       } catch {
         /* ignore */
@@ -248,15 +295,15 @@ export const executionService = {
     fs.mkdirSync(`${runDir}/artifacts`, { recursive: true });
 
     const spawnEnv =
-      agent.type === "python"
-        ? buildSpawnEnv(agent)
+      updatedAgent.type === "python"
+        ? buildSpawnEnv(updatedAgent)
         : (process.env as NodeJS.ProcessEnv);
 
     const fakeRes = buildFakeResponse(active, id, appendLog);
 
     const ctx = {
       execution: { ...storeService.getById(id)! },
-      agent,
+      agent: updatedAgent,
       sseRes: fakeRes as unknown as Response,
       runDir,
       appendLog,
@@ -264,7 +311,7 @@ export const executionService = {
     };
 
     // Choose adapter
-    const adapter = agent.type === "python" ? pythonAdapter : restAdapter;
+    const adapter = updatedAgent.type === "python" ? pythonAdapter : restAdapter;
     let handle: AdapterHandle;
 
     try {

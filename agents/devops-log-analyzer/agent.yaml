@@ -18,7 +18,7 @@ inputs:
     type: string
     required: true
     description: |
-      Absolute or relative path to the log file to analyze. Example: D:/Javed/outskill/outskill/agents/dummy_logs/kubernetes_deployment_error.log
+      Absolute or relative path to the log file to analyze. Example: agents/dummy_logs/kubernetes_deployment_error.log
 outputs:
   analysis_report:
     type: string

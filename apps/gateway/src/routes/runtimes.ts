@@ -85,7 +85,7 @@ runtimesRouter.post("/agents/:id/runtime/install", async (req: Request, res: Res
   try {
     const result = await runtimeService.resolveRuntime(agent.workingDirectory, agent.id, "3.11");
     // Reload registry so agent definition updates
-    registryService.reload();
+    await registryService.reload();
     res.json({
       message: result.message,
       agentId,
@@ -119,7 +119,7 @@ runtimesRouter.post("/agents/:id/runtime/rebuild", async (req: Request, res: Res
     }
 
     const result = await runtimeService.resolveRuntime(agent.workingDirectory, agent.id, "3.11");
-    registryService.reload();
+    await registryService.reload();
 
     res.json({
       message: `Runtime rebuilt successfully.`,

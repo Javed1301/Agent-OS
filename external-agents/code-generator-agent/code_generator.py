@@ -32,11 +32,18 @@ def run(inputs: dict, output_dir: str) -> dict:
     # 1. Load environment variables
     load_dotenv()
     
-    # Sibling fallback
+    # Sibling/Parent fallback search
     if not os.getenv("GEMINI_API_KEY"):
-        sibling_env = "D:/Javed/outskill/outskill/.env"
-        if os.path.exists(sibling_env):
-            load_dotenv(sibling_env)
+        curr = os.path.abspath(os.getcwd())
+        while True:
+            candidate = os.path.join(curr, ".env")
+            if os.path.exists(candidate):
+                load_dotenv(candidate)
+                break
+            parent = os.path.dirname(curr)
+            if parent == curr:
+                break
+            curr = parent
 
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:

@@ -34,5 +34,5 @@ configuration:
   baseUrl: http://localhost:8000
   internalSecret: ''
   note: |
-    uvicorn must be started manually before executing: cd D:/Javed/lets-talk/ai-services && uv run uvicorn api.main:app --reload Postgres is Neon (hosted) and always available.
+    uvicorn must be started manually before executing: cd <LOCAL_MEETING_NOTES_API_SOURCE> && uv run uvicorn api.main:app --reload Postgres is Neon (hosted) and always available.
 source: workspace

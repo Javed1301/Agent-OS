@@ -8,6 +8,8 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "resolve": "tsx scripts/resolve-agent.ts",
+    "test:unit": "tsx --test tests/environment-resolution.test.ts",
     "test:integration": "tsx scripts/test-integration.ts"
   },
   "keywords": ["ai", "agents", "workspace", "gateway"],

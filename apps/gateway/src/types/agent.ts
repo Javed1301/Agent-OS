@@ -38,6 +38,7 @@ export interface AgentRuntimeConfig {
 
 export interface AgentDefinition {
   id: string;
+  canonicalId?: string;
   name: string;
   description: string;
   category: string;

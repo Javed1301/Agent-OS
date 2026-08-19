@@ -4,6 +4,8 @@
 
 # --- Execution & Runtime Storage ---
 data/
+!data/registry/source-mappings.example.json
+data/registry/source-mappings.local.json
 runtimes/
 uv-cache/
 *.sqlite

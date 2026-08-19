@@ -7,7 +7,7 @@ type: python
 entrypoint: crewai-researcher
 workingDirectory: external-agents/crewai-researcher
 source: imported
-originalPath: D:/Javed/Outskill/agents/crewai-researcher
+originalPath: <ORIGINAL_IMPORT_PATH>
 capabilities:
   - web-research
 inputs:

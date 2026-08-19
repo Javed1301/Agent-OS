@@ -64,23 +64,29 @@ app.use((_req, res) => {
 });
 
 // Boot sequence: initialize persistence, secrets, runtimes, then load registry
-storeService.init();
-secretsService.init();
-runtimeService.init();
-registryService.load();
-workflowsEngine.load();
-processService.checkPsAvailable().then((psAvailable) => {
+async function boot() {
+  storeService.init();
+  secretsService.init();
+  runtimeService.init();
+  await registryService.load();
+  workflowsEngine.load();
+  const psAvailable = await processService.checkPsAvailable();
   console.log(`[system] System capabilities: psAvailable=${psAvailable}`);
-});
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`\n🚀 Agent Workspace Gateway v${VERSION}`);
-  console.log(`   http://localhost:${PORT}`);
-  console.log(`   Health:    http://localhost:${PORT}/health & http://localhost:${PORT}/api/health`);
-  console.log(`   Agents:    http://localhost:${PORT}/api/agents`);
-  console.log(`   Executions:http://localhost:${PORT}/api/executions`);
-  console.log(`   Registry:  http://localhost:${PORT}/api/registry`);
-  console.log(`   Shell:     http://localhost:${PORT}/api/shell`);
-  console.log();
+  // Start server
+  app.listen(PORT, () => {
+    console.log(`\n🚀 Agent Workspace Gateway v${VERSION}`);
+    console.log(`   http://localhost:${PORT}`);
+    console.log(`   Health:    http://localhost:${PORT}/health & http://localhost:${PORT}/api/health`);
+    console.log(`   Agents:    http://localhost:${PORT}/api/agents`);
+    console.log(`   Executions:http://localhost:${PORT}/api/executions`);
+    console.log(`   Registry:  http://localhost:${PORT}/api/registry`);
+    console.log(`   Shell:     http://localhost:${PORT}/api/shell`);
+    console.log();
+  });
+}
+
+boot().catch((err) => {
+  console.error("Fatal boot error:", err);
+  process.exit(1);
 });

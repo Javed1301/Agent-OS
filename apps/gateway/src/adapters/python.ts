@@ -49,7 +49,7 @@ export const pythonAdapter: AgentAdapter = {
 
     const child = spawn(
       interpreterPath,
-      ["-u", RUNNER_PATH, "--mode", agent.id, "--inputs", inputsJson, "--run-dir", runDir],
+      ["-u", RUNNER_PATH, "--mode", agent.canonicalId || agent.id, "--inputs", inputsJson, "--run-dir", runDir],
       {
         cwd: agent.workingDirectory,
         env: spawnEnv,

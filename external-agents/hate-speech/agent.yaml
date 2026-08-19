@@ -8,7 +8,7 @@ type: python
 entrypoint: hate-speech-detector
 workingDirectory: external-agents/hate-speech
 source: imported
-originalPath: D:/Javed/Outskill/agents/hate-speech
+originalPath: <ORIGINAL_IMPORT_PATH>
 capabilities:
   - text-classification
   - hate-speech-detection
