@@ -19,7 +19,7 @@ import type { AgentDefinition } from "../types/agent.js";
 import type { ExecutionRecord, ExecutionStatus } from "../types/execution.js";
 import { pythonAdapter } from "../adapters/python.js";
 import { restAdapter } from "../adapters/rest.js";
-import { storeService } from "./store.service.js";
+import { storeRepository } from "../repositories/index.js";
 import { buildSpawnEnv } from "./health.service.js";
 import { runtimeService } from "./runtime.service.js";
 import { environmentResolver } from "./environment-resolver.service.js";
@@ -120,21 +120,21 @@ function broadcast(active: ActiveExecution, execId: string, type: string, data: 
 // Handle a terminal SSE event (completed / failed / cancelled)
 // ---------------------------------------------------------------------------
 
-function handleTerminal(
+async function handleTerminal(
   active: ActiveExecution,
   execId: string,
   status: ExecutionStatus,
   error?: string
-): void {
+): Promise<void> {
   if (active.finished) return;
   active.finished = true;
 
   console.log(`[execution] State -> ${status} (${execId})`);
-  storeService.appendLog(execId, `[execution] State -> ${status}`);
+  storeRepository.appendLog(execId, `[execution] State -> ${status}`);
 
   const endTime = new Date().toISOString();
   const durationMs = Date.now() - active.startTime;
-  storeService.updateStatus(execId, status, { endTime, durationMs, error });
+  await storeRepository.updateStatus(execId, status, { endTime, durationMs, error });
 
   if (active.releaseWdLock) active.releaseWdLock();
   activeExecutions.delete(execId);
@@ -143,7 +143,7 @@ function handleTerminal(
     if (!res.writableEnded) res.end();
   }
 
-  storeService.pruneOldExecutions();
+  await storeRepository.pruneOldExecutions();
 }
 
 // ---------------------------------------------------------------------------
@@ -161,7 +161,7 @@ export const executionService = {
   ): Promise<string> {
     const id = generateExecId();
     const now = new Date().toISOString();
-    const runDir = storeService.getRunDir(id);
+    const runDir = storeRepository.getRunDir(id);
 
     console.log(`[execution] Created ${id} for ${agent.id}`);
     console.log(`[execution] Dispatching ${id}`);
@@ -173,12 +173,12 @@ export const executionService = {
       status: "queued",
       startTime: now,
       runDir,
-      logPath: storeService.getLogPath(id),
+      logPath: storeRepository.getLogPath(id),
     };
 
-    storeService.createExecution(record, input);
-    storeService.appendLog(id, `[execution] Created ${id} for ${agent.id}`);
-    storeService.appendLog(id, `[execution] Dispatching ${id}`);
+    await storeRepository.create(record, input);
+    storeRepository.appendLog(id, `[execution] Created ${id} for ${agent.id}`);
+    storeRepository.appendLog(id, `[execution] Dispatching ${id}`);
 
     const active: ActiveExecution = {
       handle: { cancel: () => {} },
@@ -205,7 +205,7 @@ export const executionService = {
     runDir: string,
     active: ActiveExecution
   ): Promise<void> {
-    const appendLog = (line: string) => storeService.appendLog(id, line);
+    const appendLog = (line: string) => storeRepository.appendLog(id, line);
     const startTime = new Date().toISOString();
 
     let isLockAcquired = false;
@@ -229,7 +229,7 @@ export const executionService = {
 
     console.log(`[execution] State -> running (${id})`);
     appendLog(`[execution] State -> running`);
-    storeService.updateStatus(id, "running", { startTime });
+    await storeRepository.updateStatus(id, "running", { startTime });
     broadcast(active, id, "status", "running");
 
     const updatedAgent = { ...agent };
@@ -302,7 +302,7 @@ export const executionService = {
     const fakeRes = buildFakeResponse(active, id, appendLog);
 
     const ctx = {
-      execution: { ...storeService.getById(id)! },
+      execution: { ...(await storeRepository.getById(id))! },
       agent: updatedAgent,
       sseRes: fakeRes as unknown as Response,
       runDir,
@@ -331,7 +331,7 @@ export const executionService = {
    * Attach an SSE response to a running or queued execution.
    * Flushes buffered events, then streams live events.
    */
-  streamExecution(id: string, res: Response): boolean {
+  async streamExecution(id: string, res: Response): Promise<boolean> {
     console.log(`[stream] client connected ${id}`);
     const active = activeExecutions.get(id);
     if (active) {
@@ -360,7 +360,7 @@ export const executionService = {
     }
 
     // Execution already finished — serve from store
-    const record = storeService.getById(id);
+    const record = await storeRepository.getById(id);
     if (!record) return false;
     setSseHeaders(res);
     console.log(`[stream] replaying buffered logs ${id} (stored)`);
@@ -381,7 +381,7 @@ export const executionService = {
 
     broadcast(active, id, "status", "cancelled");
     active.handle.cancel();
-    handleTerminal(active, id, "cancelled");
+    void handleTerminal(active, id, "cancelled");
     return true;
   },
 };
@@ -416,7 +416,9 @@ function buildFakeResponse(
           broadcast(active, execId, parsed.type, parsed.data);
 
           if (parsed.type === "result") {
-            storeService.saveResult(execId, parsed.data);
+            storeRepository.saveResult(execId, parsed.data).catch((err) => {
+              console.error(`[execution] Failed to save result dynamically:`, err);
+            });
           }
           if (
             parsed.type === "status" &&
@@ -424,7 +426,7 @@ function buildFakeResponse(
           ) {
             const status: ExecutionStatus =
               parsed.data === "completed" ? "completed" : "failed";
-            handleTerminal(active, execId, status);
+            void handleTerminal(active, execId, status);
             ended = true;
           }
         } catch {
@@ -436,7 +438,7 @@ function buildFakeResponse(
     end(): void {
       ended = true;
       if (!active.finished) {
-        handleTerminal(active, execId, "failed", "Adapter closed without status event.");
+        void handleTerminal(active, execId, "failed", "Adapter closed without status event.");
       }
     },
     setHeader(_name: string, _value: string): void { /* no-op */ },

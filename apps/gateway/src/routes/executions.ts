@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { registryService } from "../services/registry.service.js";
 import { executionService } from "../services/execution.service.js";
-import { storeService } from "../services/store.service.js";
+import { storeRepository } from "../repositories/index.js";
 
 export const executionsRouter = Router();
 
@@ -26,9 +26,9 @@ executionsRouter.post("/agents/:id/execute", async (req: Request, res: Response)
 });
 
 // GET /api/executions/:id/stream — SSE stream for a running execution
-executionsRouter.get("/executions/:id/stream", (req: Request, res: Response) => {
+executionsRouter.get("/executions/:id/stream", async (req: Request, res: Response) => {
   const id = String(req.params["id"]);
-  const found = executionService.streamExecution(id, res);
+  const found = await executionService.streamExecution(id, res);
   if (!found) {
     res.status(404).json({ error: `Execution '${id}' not found.` });
   }
@@ -46,15 +46,15 @@ executionsRouter.post("/executions/:id/cancel", (req: Request, res: Response) =>
 });
 
 // GET /api/executions — list execution history (optional ?agentId= filter)
-executionsRouter.get("/executions", (req: Request, res: Response) => {
+executionsRouter.get("/executions", async (req: Request, res: Response) => {
   const agentId = req.query["agentId"] as string | undefined;
-  const entries = storeService.list(agentId);
+  const entries = await storeRepository.list(agentId);
   res.json({ executions: entries, count: entries.length });
 });
 
 // GET /api/executions/:id — get execution detail
-executionsRouter.get("/executions/:id", (req: Request, res: Response) => {
-  const record = storeService.getById(String(req.params["id"]));
+executionsRouter.get("/executions/:id", async (req: Request, res: Response) => {
+  const record = await storeRepository.getById(String(req.params["id"]));
   if (!record) {
     res.status(404).json({ error: `Execution '${req.params["id"]}' not found.` });
     return;
@@ -63,14 +63,14 @@ executionsRouter.get("/executions/:id", (req: Request, res: Response) => {
 });
 
 // GET /api/executions/:id/logs — read raw log file
-executionsRouter.get("/executions/:id/logs", (req: Request, res: Response) => {
+executionsRouter.get("/executions/:id/logs", async (req: Request, res: Response) => {
   const id = String(req.params["id"]);
-  const record = storeService.getById(id);
+  const record = await storeRepository.getById(id);
   if (!record) {
     res.status(404).json({ error: `Execution '${id}' not found.` });
     return;
   }
-  const logPath = storeService.getLogPath(id);
+  const logPath = storeRepository.getLogPath(id);
   if (!fs.existsSync(logPath)) {
     res.json({ executionId: id, logs: "" });
     return;
@@ -80,14 +80,14 @@ executionsRouter.get("/executions/:id/logs", (req: Request, res: Response) => {
 });
 
 // GET /api/executions/:id/artifacts — list artifact files in the run directory
-executionsRouter.get("/executions/:id/artifacts", (req: Request, res: Response) => {
+executionsRouter.get("/executions/:id/artifacts", async (req: Request, res: Response) => {
   const id = String(req.params["id"]);
-  const record = storeService.getById(id);
+  const record = await storeRepository.getById(id);
   if (!record) {
     res.status(404).json({ error: `Execution '${id}' not found.` });
     return;
   }
-  const runDir = storeService.getRunDir(id);
+  const runDir = storeRepository.getRunDir(id);
   const artifactsDir = path.join(runDir, "artifacts");
   const artifacts: string[] = [];
 

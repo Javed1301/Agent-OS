@@ -9,7 +9,8 @@ import { shellRouter } from "./routes/shell.js";
 import { secretsRouter } from "./routes/secrets.js";
 import { runtimesRouter } from "./routes/runtimes.js";
 import { registryService } from "./services/registry.service.js";
-import { storeService } from "./services/store.service.js";
+import { storeRepository } from "./repositories/index.js";
+import { runHistoricalMigration } from "./repositories/migrate.js";
 import { secretsService } from "./services/secrets.service.js";
 import { runtimeService } from "./services/runtime.service.js";
 import { processService } from "./services/process.service.js";
@@ -65,7 +66,10 @@ app.use((_req, res) => {
 
 // Boot sequence: initialize persistence, secrets, runtimes, then load registry
 async function boot() {
-  storeService.init();
+  // Run historical data migration to SQLite if needed
+  await runHistoricalMigration();
+  
+  await storeRepository.init();
   secretsService.init();
   runtimeService.init();
   await registryService.load();

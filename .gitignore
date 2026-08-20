@@ -91,3 +91,4 @@ desktop.ini
 # --- Docker & Container Local Artifacts ---
 docker-compose.override.yml
 .docker/
+docs/

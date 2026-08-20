@@ -21,7 +21,8 @@
     "express": "^5.2.1",
     "js-yaml": "^4.1.0",
     "tree-kill": "^1.2.2",
-    "uuid": "^14.0.1"
+    "uuid": "^14.0.1",
+    "@prisma/client": "5.20.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
@@ -29,6 +30,7 @@
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^26.2.0",
     "@types/uuid": "^10.0.0",
+    "prisma": "5.20.0",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2"
   }

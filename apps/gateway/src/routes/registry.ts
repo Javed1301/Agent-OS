@@ -15,7 +15,7 @@ import { runtimeService } from "../services/runtime.service.js";
 export const registryRouter = Router();
 
 // POST /api/registry/import — register an external agent
-registryRouter.post("/import", (req: Request, res: Response) => {
+registryRouter.post("/import", async (req: Request, res: Response) => {
   const body = req.body as Record<string, unknown>;
   const folderPath = typeof body["path"] === "string" ? body["path"].trim() : "";
 
@@ -24,7 +24,7 @@ registryRouter.post("/import", (req: Request, res: Response) => {
     return;
   }
 
-  const result = registryService.registerExternal(folderPath);
+  const result = await registryService.registerExternal(folderPath);
 
   if (!result.success) {
     res.status(400).json({ error: result.error });

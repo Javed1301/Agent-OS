@@ -1,0 +1,37 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Agent {
+  id        String      @id
+  name      String
+  createdAt DateTime    @default(now())
+
+  executions Execution[]
+}
+
+model Execution {
+  id          String    @id
+  agentId     String
+  status      String
+  startTime   DateTime
+  endTime     DateTime?
+  durationMs  Int?
+  error       String?
+  exitCode    Int?
+  input       String
+  result      String?
+  outputFiles String?
+  createdAt   DateTime  @default(now())
+
+  agent       Agent     @relation(fields: [agentId], references: [id])
+
+  @@index([agentId])
+  @@index([endTime])
+  @@index([agentId, startTime])
+}

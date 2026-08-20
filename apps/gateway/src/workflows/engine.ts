@@ -8,7 +8,7 @@ import { loadWorkflows } from "./parser.js";
 import { resolveTemplate } from "./resolver.js";
 import { registryService } from "../services/registry.service.js";
 import { executionService } from "../services/execution.service.js";
-import { storeService } from "../services/store.service.js";
+import { storeRepository } from "../repositories/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WORKSPACE_ROOT = process.env["WORKSPACE_ROOT"]
@@ -90,8 +90,8 @@ function copyDirRecursive(src: string, dest: string): void {
 
 async function waitForExecution(execId: string): Promise<any> {
   return new Promise((resolve) => {
-    const interval = setInterval(() => {
-      const record = storeService.getById(execId);
+    const interval = setInterval(async () => {
+      const record = await storeRepository.getById(execId);
       if (record && record.status !== "queued" && record.status !== "running") {
         clearInterval(interval);
         resolve(record);
@@ -273,7 +273,7 @@ export const workflowsEngine = {
         // and we periodically stream logs if possible, but the CLI or client can get them.
         // Wait, the prompt says we should emit "step_log" events.
         // Let's implement a log reader that streams newly appended log lines for this execution!
-        const logPath = storeService.getLogPath(execId);
+        const logPath = storeRepository.getLogPath(execId);
         let logBytesRead = 0;
         const logInterval = setInterval(() => {
           if (fs.existsSync(logPath)) {
