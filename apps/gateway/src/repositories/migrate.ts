@@ -8,7 +8,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WORKSPACE_ROOT = process.env["WORKSPACE_ROOT"]
   ? path.resolve(process.env["WORKSPACE_ROOT"])
   : path.resolve(__dirname, "../../../..");
-const DATA_DIR = path.join(WORKSPACE_ROOT, "data");
+const DATA_DIR = process.env.DATA_DIR
+  ? path.resolve(process.env.DATA_DIR)
+  : path.join(WORKSPACE_ROOT, "data");
 const EXEC_DIR = path.join(DATA_DIR, "executions");
 const INDEX_PATH = path.join(EXEC_DIR, "index.json");
 const MARKER_PATH = path.join(DATA_DIR, ".migration_v1_complete");
@@ -22,6 +24,14 @@ const prisma = new PrismaClient({
 });
 
 export async function runHistoricalMigration(): Promise<void> {
+  if (process.env.TEST_ENV === "true") {
+    const resolvedUrl = process.env.DATABASE_URL || "";
+    const isTestDb = resolvedUrl.includes("agent-os.test.db") || resolvedUrl.includes("test");
+    if (!isTestDb) {
+      console.error("FATAL: Test environment is active but DATABASE_URL does not point to a test database!");
+      process.exit(1);
+    }
+  }
   if (fs.existsSync(MARKER_PATH)) {
     console.log("[migration] SQLite database migration already completed (marker found).");
     return;

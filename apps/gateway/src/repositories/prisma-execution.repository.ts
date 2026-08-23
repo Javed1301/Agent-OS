@@ -10,7 +10,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WORKSPACE_ROOT = process.env["WORKSPACE_ROOT"]
   ? path.resolve(process.env["WORKSPACE_ROOT"])
   : path.resolve(__dirname, "../../../..");
-const DATA_DIR = path.join(WORKSPACE_ROOT, "data");
+const DATA_DIR = process.env.DATA_DIR
+  ? path.resolve(process.env.DATA_DIR)
+  : path.join(WORKSPACE_ROOT, "data");
 const EXEC_DIR = path.join(DATA_DIR, "executions");
 
 const prisma = new PrismaClient({
@@ -23,6 +25,14 @@ const prisma = new PrismaClient({
 
 export class PrismaExecutionRepository implements IExecutionRepository {
   async init(): Promise<void> {
+    if (process.env.TEST_ENV === "true") {
+      const resolvedUrl = process.env.DATABASE_URL || "";
+      const isTestDb = resolvedUrl.includes("agent-os.test.db") || resolvedUrl.includes("test");
+      if (!isTestDb) {
+        console.error("FATAL: Test environment is active but DATABASE_URL does not point to a test database!");
+        process.exit(1);
+      }
+    }
     try {
       await prisma.$executeRawUnsafe('PRAGMA journal_mode=WAL;');
       await prisma.$executeRawUnsafe('PRAGMA busy_timeout=5000;');
@@ -48,28 +58,37 @@ export class PrismaExecutionRepository implements IExecutionRepository {
     const agent = registryService.getAgent(record.agentId);
     const agentName = agent ? agent.name : record.agentId;
 
-    await prisma.agent.upsert({
-      where: { id: record.agentId },
-      update: { name: agentName },
-      create: { id: record.agentId, name: agentName },
-    });
-
-    // 3. Create database row
-    await prisma.execution.create({
-      data: {
-        id: record.id,
-        agentId: record.agentId,
-        status: record.status,
-        startTime: new Date(record.startTime),
-        input: JSON.stringify(input),
-        endTime: record.endTime ? new Date(record.endTime) : null,
-        durationMs: record.durationMs ?? null,
-        error: record.error ?? null,
-        exitCode: record.exitCode ?? null,
-        result: record.result ? JSON.stringify(record.result) : null,
-        outputFiles: record.outputFiles ? JSON.stringify(record.outputFiles) : null,
-      },
-    });
+    try {
+      await prisma.$transaction([
+        prisma.agent.upsert({
+          where: { id: record.agentId },
+          update: { name: agentName },
+          create: { id: record.agentId, name: agentName },
+        }),
+        prisma.execution.create({
+          data: {
+            id: record.id,
+            agentId: record.agentId,
+            status: record.status,
+            startTime: new Date(record.startTime),
+            input: JSON.stringify(input),
+            endTime: record.endTime ? new Date(record.endTime) : null,
+            durationMs: record.durationMs ?? null,
+            error: record.error ?? null,
+            exitCode: record.exitCode ?? null,
+            result: record.result ? JSON.stringify(record.result) : null,
+            outputFiles: record.outputFiles ? JSON.stringify(record.outputFiles) : null,
+          },
+        }),
+      ]);
+    } catch (error) {
+      try {
+        fs.rmSync(dir, { recursive: true, force: true });
+      } catch (cleanupError) {
+        console.error(`[store-prisma] Failed to clean up directory ${dir} after transaction failure:`, cleanupError);
+      }
+      throw error;
+    }
   }
 
   async updateStatus(id: string, status: ExecutionStatus, fields: Partial<ExecutionRecord> = {}): Promise<void> {

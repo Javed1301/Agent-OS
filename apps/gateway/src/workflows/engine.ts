@@ -14,7 +14,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WORKSPACE_ROOT = process.env["WORKSPACE_ROOT"]
   ? path.resolve(process.env["WORKSPACE_ROOT"])
   : path.resolve(__dirname, "../../../..");
-const EXEC_DIR = path.join(WORKSPACE_ROOT, "data", "executions");
+const DATA_DIR = process.env.DATA_DIR
+  ? path.resolve(process.env.DATA_DIR)
+  : path.join(WORKSPACE_ROOT, "data");
+const EXEC_DIR = path.join(DATA_DIR, "executions");
 
 // ---------------------------------------------------------------------------
 // Active workflow runs — in-memory tracker for SSE connections
@@ -340,7 +343,7 @@ export const workflowsEngine = {
           });
 
           // Copy all step execution artifacts into the workflow run's artifacts/<stepId>/ folder genericly
-          const stepArtifactsSrcDir = path.join(WORKSPACE_ROOT, "data", "executions", execId, "artifacts");
+          const stepArtifactsSrcDir = path.join(EXEC_DIR, execId, "artifacts");
           if (fs.existsSync(stepArtifactsSrcDir)) {
             copyDirRecursive(stepArtifactsSrcDir, stepArtifactsDestDir);
           }

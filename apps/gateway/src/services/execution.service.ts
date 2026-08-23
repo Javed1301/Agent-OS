@@ -23,7 +23,7 @@ import { storeRepository } from "../repositories/index.js";
 import { buildSpawnEnv } from "./health.service.js";
 import { runtimeService } from "./runtime.service.js";
 import { environmentResolver } from "./environment-resolver.service.js";
-import type { AdapterHandle } from "../adapters/base.js";
+import type { AdapterHandle, AgentAdapter } from "../adapters/base.js";
 
 // ---------------------------------------------------------------------------
 // Per-working-directory mutex
@@ -68,6 +68,7 @@ interface ActiveExecution {
   eventLog: Array<{ type: string; data: unknown; timestamp: string }>;
   finished: boolean;
   startTime: number;
+  error?: string;
 }
 
 const activeExecutions = new Map<string, ActiveExecution>();
@@ -151,6 +152,7 @@ async function handleTerminal(
 // ---------------------------------------------------------------------------
 
 export const executionService = {
+  _adapterOverride: undefined as AgentAdapter | undefined,
   /**
    * Start executing an agent. Returns the executionId immediately.
    * Execution is asynchronous; callers attach SSE via streamExecution().
@@ -311,7 +313,7 @@ export const executionService = {
     };
 
     // Choose adapter
-    const adapter = updatedAgent.type === "python" ? pythonAdapter : restAdapter;
+    const adapter = (this as any)._adapterOverride || (updatedAgent.type === "python" ? pythonAdapter : restAdapter);
     let handle: AdapterHandle;
 
     try {
@@ -415,6 +417,13 @@ function buildFakeResponse(
           const parsed = JSON.parse(jsonStr) as { type: string; data: unknown };
           broadcast(active, execId, parsed.type, parsed.data);
 
+          if (parsed.type === "error") {
+            active.error = typeof parsed.data === "string"
+              ? parsed.data
+              : (parsed.data && typeof parsed.data === "object" && "message" in parsed.data)
+                ? String((parsed.data as any).message)
+                : JSON.stringify(parsed.data);
+          }
           if (parsed.type === "result") {
             storeRepository.saveResult(execId, parsed.data).catch((err) => {
               console.error(`[execution] Failed to save result dynamically:`, err);
@@ -426,7 +435,7 @@ function buildFakeResponse(
           ) {
             const status: ExecutionStatus =
               parsed.data === "completed" ? "completed" : "failed";
-            void handleTerminal(active, execId, status);
+            void handleTerminal(active, execId, status, status === "failed" ? active.error : undefined);
             ended = true;
           }
         } catch {

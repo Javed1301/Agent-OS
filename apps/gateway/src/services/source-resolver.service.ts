@@ -7,9 +7,13 @@ const WORKSPACE_ROOT = process.env["WORKSPACE_ROOT"]
   ? path.resolve(process.env["WORKSPACE_ROOT"])
   : path.resolve(__dirname, "../../../..");
 
-const LOCAL_MAPPINGS_PATH = path.join(WORKSPACE_ROOT, "data", "registry", "source-mappings.local.json");
-const EXAMPLE_MAPPINGS_PATH = path.join(WORKSPACE_ROOT, "data", "registry", "source-mappings.example.json");
-const EXTERNAL_REGISTRY_PATH = path.join(WORKSPACE_ROOT, "data", "registry", "external-agents.json");
+const DATA_DIR = process.env.DATA_DIR
+  ? path.resolve(process.env.DATA_DIR)
+  : path.join(WORKSPACE_ROOT, "data");
+
+const LOCAL_MAPPINGS_PATH = path.join(DATA_DIR, "registry", "source-mappings.local.json");
+const EXAMPLE_MAPPINGS_PATH = path.join(DATA_DIR, "registry", "source-mappings.example.json");
+const EXTERNAL_REGISTRY_PATH = path.join(DATA_DIR, "registry", "external-agents.json");
 
 export interface ResolvedSource {
   agentId: string;

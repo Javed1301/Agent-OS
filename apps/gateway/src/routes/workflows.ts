@@ -9,7 +9,10 @@ import { registryService } from "../services/registry.service.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WORKSPACE_ROOT = path.resolve(__dirname, "../../../..");
-const EXEC_DIR = path.join(WORKSPACE_ROOT, "data", "executions");
+const DATA_DIR = process.env.DATA_DIR
+  ? path.resolve(process.env.DATA_DIR)
+  : path.join(WORKSPACE_ROOT, "data");
+const EXEC_DIR = path.join(DATA_DIR, "executions");
 
 export const workflowsRouter = Router();
 

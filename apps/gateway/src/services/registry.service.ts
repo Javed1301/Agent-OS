@@ -18,13 +18,15 @@ import { environmentResolver } from "./environment-resolver.service.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Workspace root override for Docker or 4 levels up from apps/gateway/src/services/
 const WORKSPACE_ROOT = process.env["WORKSPACE_ROOT"]
   ? path.resolve(process.env["WORKSPACE_ROOT"])
   : path.resolve(__dirname, "../../../..");
+const DATA_DIR = process.env.DATA_DIR
+  ? path.resolve(process.env.DATA_DIR)
+  : path.join(WORKSPACE_ROOT, "data");
 const AGENTS_DIR = path.join(WORKSPACE_ROOT, "agents");
 const EXTERNAL_AGENTS_DIR = path.join(WORKSPACE_ROOT, "external-agents");
-const EXTERNAL_REGISTRY_PATH = path.join(WORKSPACE_ROOT, "data", "registry", "external-agents.json");
+const EXTERNAL_REGISTRY_PATH = path.join(DATA_DIR, "registry", "external-agents.json");
 
 // ---------------------------------------------------------------------------
 // Path utilities & normalization

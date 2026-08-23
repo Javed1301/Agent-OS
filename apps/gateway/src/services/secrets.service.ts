@@ -13,13 +13,14 @@ import os from "node:os";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import type { AgentDefinition } from "../types/agent.js";
-
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WORKSPACE_ROOT = process.env["WORKSPACE_ROOT"]
   ? path.resolve(process.env["WORKSPACE_ROOT"])
   : path.resolve(__dirname, "../../../..");
-
-const SECRETS_DIR = path.join(WORKSPACE_ROOT, "data", "secrets");
+const DATA_DIR = process.env.DATA_DIR
+  ? path.resolve(process.env.DATA_DIR)
+  : path.join(WORKSPACE_ROOT, "data");
+const SECRETS_DIR = path.join(DATA_DIR, "secrets");
 const VAULT_PATH = path.join(SECRETS_DIR, "vault.json");
 
 const ALGORITHM = "aes-256-gcm";
