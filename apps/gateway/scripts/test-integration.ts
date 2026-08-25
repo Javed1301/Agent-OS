@@ -339,11 +339,13 @@ async function runTestServerAndClean(): Promise<void> {
         ...process.env,
         DATABASE_URL: "file:../../../data/test/agent-os.test.db",
       },
-      stdio: "ignore",
+      stdio: "pipe",
     });
     console.log("[test-runner] Migrations applied successfully.");
-  } catch (err) {
-    console.error("FATAL: Failed to apply migrations to test database:", err);
+  } catch (err: any) {
+    console.error("FATAL: Failed to apply migrations to test database:", err.message || err);
+    if (err.stdout) console.error(err.stdout.toString());
+    if (err.stderr) console.error(err.stderr.toString());
     process.exit(1);
   }
 
@@ -360,7 +362,15 @@ async function runTestServerAndClean(): Promise<void> {
       TEST_ENV: "true",
       NODE_ENV: "test",
     },
-    stdio: "ignore",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  let serverOutput = "";
+  child.stdout?.on("data", (chunk: Buffer) => {
+    serverOutput += chunk.toString();
+  });
+  child.stderr?.on("data", (chunk: Buffer) => {
+    serverOutput += chunk.toString();
   });
 
   // Handle server process exit early
@@ -369,6 +379,9 @@ async function runTestServerAndClean(): Promise<void> {
     serverExited = true;
     if (code !== null && code !== 0) {
       console.error(`[test-runner] Server exited prematurely with code ${code}`);
+      if (serverOutput.trim()) {
+        console.error(`[test-runner] Captured server output:\n${serverOutput}`);
+      }
     }
   });
 

@@ -39,13 +39,13 @@ jobs:
       - name: Lint Dashboard
         run: npm run lint --workspace=apps/dashboard
 
+      # Performs TypeScript compilation and typechecking for both apps/gateway (via tsc)
+      # and apps/dashboard (via next build). A separate typecheck step is redundant.
+      - name: Build and Typecheck
+        run: npm run build
+
       # Runs the canonical deterministic test suite (npm test), which executes unit, repository,
       # provider, and lifecycle tests, followed by integration tests in non-smoke mode.
       # Smoke tests (test:smoke) are excluded as they require external services and credentials.
       - name: Run Deterministic Tests
         run: npm test
-
-      # Performs TypeScript compilation and typechecking for both apps/gateway (via tsc)
-      # and apps/dashboard (via next build). A separate typecheck step is redundant.
-      - name: Build and Typecheck
-        run: npm run build

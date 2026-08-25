@@ -13,6 +13,7 @@
     "test:repository": "tsx --test tests/prisma-execution.repository.test.ts tests/json-execution.repository.test.ts",
     "test:provider": "tsx --test tests/provider/provider-error-scenarios.test.ts",
     "test:lifecycle": "tsx --test tests/lifecycle/lifecycle.test.ts",
+    "pretest:integration": "npm run build",
     "test:integration": "tsx scripts/test-integration.ts",
     "test:smoke": "tsx scripts/test-integration.ts --smoke",
     "test": "npm run test:unit && npm run test:repository && npm run test:provider && npm run test:lifecycle && npm run test:integration"
