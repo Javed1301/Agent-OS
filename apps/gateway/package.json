@@ -10,9 +10,12 @@
     "start": "node dist/index.js",
     "resolve": "tsx scripts/resolve-agent.ts",
     "test:unit": "tsx --test tests/environment-resolution.test.ts",
+    "test:repository": "tsx --test tests/prisma-execution.repository.test.ts tests/json-execution.repository.test.ts",
     "test:provider": "tsx --test tests/provider/provider-error-scenarios.test.ts",
+    "test:lifecycle": "tsx --test tests/lifecycle/lifecycle.test.ts",
     "test:integration": "tsx scripts/test-integration.ts",
-    "test:smoke": "tsx scripts/test-integration.ts --smoke"
+    "test:smoke": "tsx scripts/test-integration.ts --smoke",
+    "test": "npm run test:unit && npm run test:repository && npm run test:provider && npm run test:lifecycle && npm run test:integration"
   },
   "keywords": ["ai", "agents", "workspace", "gateway"],
   "author": "",

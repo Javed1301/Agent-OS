@@ -560,7 +560,7 @@ export default function AgentDetailPage({ params }: PageProps) {
                     {agent.workingDirectory}
                   </p>
                   <p className="text-[11px] text-amber-200/60 mt-0.5">
-                    Host-absolute paths break inside Docker containers and on other team members' machines.
+                    Host-absolute paths break inside Docker containers and on other team members&apos; machines.
                   </p>
                 </div>
                 <PrimaryButton

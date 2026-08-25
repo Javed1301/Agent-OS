@@ -1,0 +1,51 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate:
+    name: Validate and Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      # The environment-resolution unit tests (environment-resolution.test.ts) discover
+      # the system Python interpreter path and version, requiring a Python runtime.
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      # Prisma client generation must be executed prior to linting, typechecking, and building
+      # because gateway components compile against and import types from '@prisma/client'.
+      - name: Generate Prisma Client
+        run: npx prisma generate --schema=apps/gateway/prisma/schema.prisma
+
+      - name: Lint Dashboard
+        run: npm run lint --workspace=apps/dashboard
+
+      # Runs the canonical deterministic test suite (npm test), which executes unit, repository,
+      # provider, and lifecycle tests, followed by integration tests in non-smoke mode.
+      # Smoke tests (test:smoke) are excluded as they require external services and credentials.
+      - name: Run Deterministic Tests
+        run: npm test
+
+      # Performs TypeScript compilation and typechecking for both apps/gateway (via tsc)
+      # and apps/dashboard (via next build). A separate typecheck step is redundant.
+      - name: Build and Typecheck
+        run: npm run build
