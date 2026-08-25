@@ -1,4 +1,4 @@
-import test from "node:test";
+import test, { before, after } from "node:test";
 import assert from "node:assert";
 import fs from "node:fs";
 import path from "node:path";
@@ -11,6 +11,131 @@ import { environmentResolver } from "../src/services/environment-resolver.servic
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WORKSPACE_ROOT = path.resolve(__dirname, "../../../..");
+const FIXTURE_DIR = path.join(WORKSPACE_ROOT, "tmp", "test-env-fixtures");
+
+let originalResolve: typeof agentSourceResolver.resolve;
+let originalDiscover: typeof environmentDiscoveryService.discover;
+let originalGetMetadata: typeof environmentDiscoveryService.getEnvironmentMetadata;
+
+before(() => {
+  // Create temporary disk fixture directory for deterministic test isolation
+  fs.mkdirSync(path.join(FIXTURE_DIR, "agents", "beginner"), { recursive: true });
+  fs.mkdirSync(path.join(FIXTURE_DIR, "agents", "myntra-rag"), { recursive: true });
+
+  fs.writeFileSync(
+    path.join(FIXTURE_DIR, "agents", "beginner", "agent.yaml"),
+    "id: hate-speech\nname: Hate Speech Detector\npython: '3.11'\n",
+    "utf-8"
+  );
+
+  fs.writeFileSync(
+    path.join(FIXTURE_DIR, "agents", "myntra-rag", "agent.yaml"),
+    "id: myntra-rag\nname: Myntra RAG\npython: '3.11'\n",
+    "utf-8"
+  );
+
+  // Real requirements.txt file with unsatisfied version requirements to trigger CREATE_MANAGED_RUNTIME fallback
+  fs.writeFileSync(
+    path.join(FIXTURE_DIR, "agents", "myntra-rag", "requirements.txt"),
+    "langchain==99.0.0\nfaiss-cpu>=99.0.0\n",
+    "utf-8"
+  );
+
+  // Scoped mock for agentSourceResolver.resolve to map fixture paths deterministically
+  originalResolve = agentSourceResolver.resolve.bind(agentSourceResolver);
+  agentSourceResolver.resolve = (agentId: string, manifestWd?: string, manifestEntrypoint?: string) => {
+    const startId = agentId;
+    const resolvedId = agentId === "hate-speech-detector" ? "hate-speech" : agentId;
+
+    if (resolvedId === "hate-speech") {
+      return {
+        agentId: startId,
+        sourceRoot: path.join(FIXTURE_DIR, "agents", "beginner").replace(/\\/g, "/"),
+        entrypoint: "hate-speech",
+        dependencyDescriptor: "none",
+      };
+    }
+
+    if (resolvedId === "myntra-rag") {
+      const sourceRoot = path.join(FIXTURE_DIR, "agents", "myntra-rag").replace(/\\/g, "/");
+      const descriptorPath = path.join(sourceRoot, "requirements.txt").replace(/\\/g, "/");
+      return {
+        agentId: startId,
+        sourceRoot,
+        entrypoint: "myntra-rag",
+        dependencyDescriptor: "requirements.txt",
+        descriptorPath,
+      };
+    }
+
+    return originalResolve(agentId, manifestWd, manifestEntrypoint);
+  };
+
+  // Scoped mock for environmentDiscoveryService.discover when sourceRoot is provided
+  originalDiscover = environmentDiscoveryService.discover.bind(environmentDiscoveryService);
+  environmentDiscoveryService.discover = async (sourceRoot?: string) => {
+    if (sourceRoot) {
+      const isWindows = process.platform === "win32";
+      const dummyVenvBin = path.join(FIXTURE_DIR, ".venv311", isWindows ? "Scripts/python.exe" : "bin/python").replace(/\\/g, "/");
+      const systemBin = isWindows ? "C:/Python311/python.exe" : "/usr/bin/python3.11";
+
+      return [
+        {
+          id: "ENV-VENV-1",
+          type: "venv" as const,
+          pythonVersion: "3.11.16",
+          executablePath: dummyVenvBin,
+          environmentRoot: path.join(FIXTURE_DIR, ".venv311").replace(/\\/g, "/"),
+          platform: process.platform,
+          discoveredFrom: "Parent Project Local: .venv311",
+          packages: {
+            pip: "24.0",
+          },
+        },
+        {
+          id: "ENV-SYSTEM-1",
+          type: "system" as const,
+          pythonVersion: "3.11.16",
+          executablePath: systemBin,
+          platform: process.platform,
+          discoveredFrom: "System Path",
+          packages: {},
+        },
+      ];
+    }
+    return originalDiscover();
+  };
+
+  // Scoped mock for environmentDiscoveryService.getEnvironmentMetadata
+  originalGetMetadata = environmentDiscoveryService.getEnvironmentMetadata.bind(environmentDiscoveryService);
+  environmentDiscoveryService.getEnvironmentMetadata = async (execPath: string) => {
+    if (execPath.includes(".venv311") || execPath.includes("Python311") || execPath.includes("python3.11")) {
+      return {
+        pythonVersion: "3.11.16",
+        packages: {
+          pip: "24.0",
+        },
+      };
+    }
+    return originalGetMetadata(execPath);
+  };
+});
+
+after(() => {
+  // Restore mocks
+  if (originalResolve) agentSourceResolver.resolve = originalResolve;
+  if (originalDiscover) environmentDiscoveryService.discover = originalDiscover;
+  if (originalGetMetadata) environmentDiscoveryService.getEnvironmentMetadata = originalGetMetadata;
+
+  // Clean up temporary disk fixture directory
+  if (fs.existsSync(FIXTURE_DIR)) {
+    try {
+      fs.rmSync(FIXTURE_DIR, { recursive: true, force: true });
+    } catch {
+      // Best effort cleanup
+    }
+  }
+});
 
 test("1. Source Resolution Tests", async (t) => {
   await t.test("should resolve hate-speech mapped agent to beginner folder", () => {
@@ -123,8 +248,6 @@ test("4. Resolution Policy Tests", async (t) => {
   });
 
   await t.test("should fall back to CREATE_MANAGED_RUNTIME for agent with unsatisfied requirements", async () => {
-    // We import an agent or test with high required package version that does not exist in local envs
-    const dummyAgentWd = path.join(WORKSPACE_ROOT, "agents", "myntra-rag");
     const res = await environmentResolver.resolve("myntra-rag");
     assert.strictEqual(res.action, "CREATE_MANAGED_RUNTIME");
   });
