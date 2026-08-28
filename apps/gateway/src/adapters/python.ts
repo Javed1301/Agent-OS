@@ -23,6 +23,8 @@ import type { AgentAdapter, AdapterContext, AdapterHandle, AdapterHealth } from 
 import type { AgentDefinition } from "../types/agent.js";
 import { safeTreeKill } from "../services/process.service.js";
 
+import { logger } from "../services/logger.service.js";
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Workspace root override for Docker or 4 levels up from apps/gateway/src/adapters/
@@ -60,6 +62,11 @@ export const pythonAdapter: AgentAdapter = {
 
     if (child.pid) {
       const pidLog = `[agent-os] Process started (pid=${child.pid})`;
+      logger.info("process_spawned", `Process spawned (pid=${child.pid})`, {
+        executionId: execution.id,
+        agentId: agent.id,
+        details: { pid: child.pid, interpreterPath },
+      });
       appendLog(`[execution] Spawned pid=${child.pid}`);
       appendLog(pidLog);
       emit("log", `[execution] Spawned pid=${child.pid}`);
@@ -68,6 +75,11 @@ export const pythonAdapter: AgentAdapter = {
 
     child.on("error", (err) => {
       const msg = err instanceof Error ? err.message : String(err);
+      logger.error("process_error", `Failed to spawn process: ${msg}`, {
+        executionId: execution.id,
+        agentId: agent.id,
+        details: { interpreterPath, error: msg },
+      });
       appendLog(`[exec] Error spawning process: ${msg}`);
       emit("log", `[exec] Error spawning process: ${msg}`);
       emit("error", `Failed to spawn interpreter process (${interpreterPath}): ${msg}`);
@@ -117,6 +129,11 @@ export const pythonAdapter: AgentAdapter = {
         appendLog(`[stdout] ${stdoutBuffer}`);
         emit("log", stdoutBuffer);
       }
+      logger.info("process_exited", `Process exited code=${code ?? "null"} signal=${signal ?? "null"}`, {
+        executionId: execution.id,
+        agentId: agent.id,
+        details: { exitCode: code ?? null, signal: signal ?? null },
+      });
       appendLog(`[exit] code=${code ?? "null"} signal=${signal ?? "null"}`);
     });
 

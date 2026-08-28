@@ -9,7 +9,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "resolve": "tsx scripts/resolve-agent.ts",
-    "test:unit": "tsx --test tests/environment-resolution.test.ts",
+    "test:unit": "tsx --test tests/environment-resolution.test.ts tests/validation.test.ts tests/path-security.test.ts tests/timeout.test.ts tests/logger.test.ts tests/metrics.test.ts",
     "test:repository": "tsx --test tests/prisma-execution.repository.test.ts tests/json-execution.repository.test.ts",
     "test:provider": "tsx --test tests/provider/provider-error-scenarios.test.ts",
     "test:lifecycle": "tsx --test tests/lifecycle/lifecycle.test.ts",

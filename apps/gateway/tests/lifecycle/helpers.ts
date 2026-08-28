@@ -166,7 +166,7 @@ export async function waitForExecutionStatus(
  */
 export async function waitForTerminalState(id: string, timeoutMs = 2000): Promise<ExecutionRecord> {
   const start = Date.now();
-  const terminalStates: ExecutionStatus[] = ["completed", "failed", "cancelled"];
+  const terminalStates: ExecutionStatus[] = ["completed", "failed", "cancelled", "timeout"];
   while (Date.now() - start < timeoutMs) {
     const record = await repo.getById(id);
     if (record && terminalStates.includes(record.status)) {

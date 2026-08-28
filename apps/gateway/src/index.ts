@@ -15,6 +15,7 @@ import { secretsService } from "./services/secrets.service.js";
 import { runtimeService } from "./services/runtime.service.js";
 import { processService } from "./services/process.service.js";
 import { workflowsEngine } from "./workflows/engine.js";
+import { metricsService } from "./services/metrics.service.js";
 
 const PORT = parseInt(process.env["PORT"] ?? "8080", 10);
 const VERSION = "2.0.0";
@@ -58,6 +59,18 @@ const handleHealth = async (_req: express.Request, res: express.Response) => {
 
 app.get("/health", handleHealth);
 app.get("/api/health", handleHealth);
+
+// Operational metrics handler (exposed on both /metrics and /api/metrics)
+const handleMetrics = (_req: express.Request, res: express.Response) => {
+  res.json({
+    timestamp: new Date().toISOString(),
+    uptimeSeconds: Math.floor(process.uptime()),
+    metrics: metricsService.getMetrics(),
+  });
+};
+
+app.get("/metrics", handleMetrics);
+app.get("/api/metrics", handleMetrics);
 
 // 404 catch-all
 app.use((_req, res) => {

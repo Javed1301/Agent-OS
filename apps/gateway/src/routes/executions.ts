@@ -5,6 +5,7 @@ import path from "node:path";
 import { registryService } from "../services/registry.service.js";
 import { executionService } from "../services/execution.service.js";
 import { storeRepository } from "../repositories/index.js";
+import { validateAgentInput } from "../services/validation.service.js";
 
 export const executionsRouter = Router();
 
@@ -16,8 +17,16 @@ executionsRouter.post("/agents/:id/execute", async (req: Request, res: Response)
     return;
   }
   try {
-    const input = (req.body as Record<string, unknown>) ?? {};
-    const executionId = await executionService.execute(agent, input);
+    const input = req.body;
+    const validation = validateAgentInput(agent, input);
+    if (!validation.valid) {
+      res.status(400).json({
+        error: "Invalid execution input payload.",
+        details: validation.errors,
+      });
+      return;
+    }
+    const executionId = await executionService.execute(agent, input as Record<string, unknown>);
     res.status(202).json({ executionId, agentId: agent.id, status: "queued" });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

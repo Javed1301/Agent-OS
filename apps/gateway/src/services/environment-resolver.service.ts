@@ -5,6 +5,8 @@ import { agentSourceResolver, ResolvedSource } from "./source-resolver.service.j
 import { environmentDiscoveryService, PythonEnvironment } from "./discovery.service.js";
 import { environmentCompatibilityService } from "./compatibility.service.js";
 
+import { logger } from "./logger.service.js";
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WORKSPACE_ROOT = process.env["WORKSPACE_ROOT"]
   ? path.resolve(process.env["WORKSPACE_ROOT"])
@@ -35,6 +37,11 @@ export const environmentResolver = {
     // 1. Resolve agent actual sourceRoot
     const resolvedSource = agentSourceResolver.resolve(agentId, manifestWd, manifestEntrypoint);
     const { sourceRoot, dependencyDescriptor, descriptorPath } = resolvedSource;
+
+    logger.info("environment_resolution_started", `Resolving environment for agent ${agentId}`, {
+      agentId,
+      details: { sourceRoot, pythonVersion, dependencyDescriptor },
+    });
 
     // 2. Read requirements contents
     let requirementsContent = "";
@@ -116,16 +123,11 @@ export const environmentResolver = {
       const selected = compatibleCandidates[0].env;
       const reason = `Found compatible environment. Discovered ${candidates.length} candidates, ${compatibleCandidates.length} compatible. Best: ${selected.id} via priority mapping.`;
 
-      // Log decision (as requested in Section 16 of spec)
-      console.log(`[environment] Agent: ${agentId}`);
-      console.log(`[environment] Source: ${sourceRoot}`);
-      console.log(`[environment] Python requirement: ${pythonVersion}`);
-      console.log(`[environment] Dependencies: ${dependencyDescriptor || "none"}`);
-      console.log(`[environment] Candidates found: ${candidates.length}`);
-      console.log(`[environment] Compatible candidates: ${compatibleCandidates.length}`);
-      console.log(`[environment] Selected: ${selected.id} (${selected.type})`);
-      console.log(`[environment] Interpreter: ${selected.executablePath}`);
-      console.log(`[environment] Action: REUSE_EXISTING`);
+      logger.info("environment_resolved", `Environment resolved: REUSE_EXISTING (${selected.id})`, {
+        agentId,
+        durationMs: totalTimeMs,
+        details: { action: "REUSE_EXISTING", selected: selected.id, executablePath: selected.executablePath, sourceRoot },
+      });
 
       return {
         action: "REUSE_EXISTING",
@@ -138,13 +140,11 @@ export const environmentResolver = {
 
     // No compatible environment found -> Falling back to CREATE_MANAGED_RUNTIME
     const reason = `No compatible local environment found. Falling back to creating managed runtime using uv.`;
-    console.log(`[environment] Agent: ${agentId}`);
-    console.log(`[environment] Source: ${sourceRoot}`);
-    console.log(`[environment] Python requirement: ${pythonVersion}`);
-    console.log(`[environment] Dependencies: ${dependencyDescriptor || "none"}`);
-    console.log(`[environment] Candidates found: ${candidates.length}`);
-      console.log(`[environment] Compatible candidates: 0`);
-    console.log(`[environment] Action: CREATE_MANAGED_RUNTIME`);
+    logger.info("environment_resolved", "Environment resolved: CREATE_MANAGED_RUNTIME", {
+      agentId,
+      durationMs: totalTimeMs,
+      details: { action: "CREATE_MANAGED_RUNTIME", sourceRoot },
+    });
 
     return {
       action: "CREATE_MANAGED_RUNTIME",

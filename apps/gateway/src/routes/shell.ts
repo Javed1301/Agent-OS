@@ -13,7 +13,9 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
 import fs from "node:fs";
+import path from "node:path";
 import { spawn } from "node:child_process";
+import { isPathWithinAllowedRoots } from "../services/path-safety.service.js";
 
 export const shellRouter = Router();
 
@@ -27,11 +29,6 @@ shellRouter.post("/open-folder", (req: Request, res: Response) => {
     return;
   }
 
-  if (!fs.existsSync(folderPath)) {
-    res.status(404).json({ error: `Path not found: ${folderPath}` });
-    return;
-  }
-
   const isDocker = process.env["DOCKER_ENV"] === "true" || fs.existsSync("/.dockerenv");
   if (isDocker) {
     res.json({
@@ -40,6 +37,18 @@ shellRouter.post("/open-folder", (req: Request, res: Response) => {
       message: "Folder opening is not supported inside Docker container environments.",
       path: folderPath,
     });
+    return;
+  }
+
+  const resolvedPath = path.resolve(folderPath);
+
+  if (!isPathWithinAllowedRoots(resolvedPath)) {
+    res.status(403).json({ error: "Access denied: path must be within the workspace or data directory." });
+    return;
+  }
+
+  if (!fs.existsSync(resolvedPath)) {
+    res.status(404).json({ error: `Path not found: ${folderPath}` });
     return;
   }
 

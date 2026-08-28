@@ -24,6 +24,8 @@ import { buildSpawnEnv } from "./health.service.js";
 import { runtimeService } from "./runtime.service.js";
 import { environmentResolver } from "./environment-resolver.service.js";
 import type { AdapterHandle, AgentAdapter } from "../adapters/base.js";
+import { logger } from "./logger.service.js";
+import { metricsService } from "./metrics.service.js";
 
 // ---------------------------------------------------------------------------
 // Per-working-directory mutex
@@ -32,9 +34,9 @@ import type { AdapterHandle, AgentAdapter } from "../adapters/base.js";
 
 const wdLocks = new Map<string, Promise<void>>();
 
-async function acquireWdLock(workingDir: string, execId: string, appendLog: (s: string) => void): Promise<() => void> {
+async function acquireWdLock(workingDir: string, execId: string, agentId: string, appendLog: (s: string) => void): Promise<() => void> {
   const msgReq = `[execution] Lock requested: ${workingDir} for ${execId}`;
-  console.log(msgReq);
+  logger.info("lock_requested", `Lock requested for ${workingDir}`, { executionId: execId, agentId, details: { workingDir } });
   appendLog(msgReq);
 
   const current = wdLocks.get(workingDir) ?? Promise.resolve();
@@ -46,12 +48,12 @@ async function acquireWdLock(workingDir: string, execId: string, appendLog: (s: 
   await current;
 
   const msgAcq = `[execution] Lock acquired: ${workingDir} for ${execId}`;
-  console.log(msgAcq);
+  logger.info("lock_acquired", `Lock acquired for ${workingDir}`, { executionId: execId, agentId, details: { workingDir } });
   appendLog(msgAcq);
 
   return () => {
     const msgRel = `[execution] Lock released: ${workingDir} for ${execId}`;
-    console.log(msgRel);
+    logger.info("lock_released", `Lock released for ${workingDir}`, { executionId: execId, agentId, details: { workingDir } });
     appendLog(msgRel);
     release();
   };
@@ -63,12 +65,14 @@ async function acquireWdLock(workingDir: string, execId: string, appendLog: (s: 
 
 interface ActiveExecution {
   handle: AdapterHandle;
+  agentId: string;
   releaseWdLock?: () => void;
   consumers: Response[];
   eventLog: Array<{ type: string; data: unknown; timestamp: string }>;
   finished: boolean;
   startTime: number;
   error?: string;
+  timeoutTimer?: NodeJS.Timeout;
 }
 
 const activeExecutions = new Map<string, ActiveExecution>();
@@ -117,8 +121,22 @@ function broadcast(active: ActiveExecution, execId: string, type: string, data: 
   }
 }
 
+/**
+ * Safe parser for global execution timeout configuration.
+ * Environment variable: EXECUTION_TIMEOUT_MS (default: 300000 ms / 5 minutes)
+ */
+export function getExecutionTimeoutMs(): number {
+  const envVal = process.env["EXECUTION_TIMEOUT_MS"];
+  if (!envVal) return 300000;
+  const parsed = parseInt(envVal, 10);
+  if (isNaN(parsed) || !isFinite(parsed) || parsed <= 0) {
+    return 300000;
+  }
+  return parsed;
+}
+
 // ---------------------------------------------------------------------------
-// Handle a terminal SSE event (completed / failed / cancelled)
+// Handle a terminal SSE event (completed / failed / cancelled / timeout)
 // ---------------------------------------------------------------------------
 
 async function handleTerminal(
@@ -130,11 +148,24 @@ async function handleTerminal(
   if (active.finished) return;
   active.finished = true;
 
-  console.log(`[execution] State -> ${status} (${execId})`);
-  storeRepository.appendLog(execId, `[execution] State -> ${status}`);
+  if (active.timeoutTimer) {
+    clearTimeout(active.timeoutTimer);
+    active.timeoutTimer = undefined;
+  }
 
   const endTime = new Date().toISOString();
   const durationMs = Date.now() - active.startTime;
+
+  metricsService.recordExecutionTerminal(status, durationMs);
+
+  logger.info("execution_terminal", `State -> ${status} (${execId})`, {
+    executionId: execId,
+    agentId: active.agentId,
+    durationMs,
+    details: { status, error },
+  });
+  storeRepository.appendLog(execId, `[execution] State -> ${status}`);
+
   await storeRepository.updateStatus(execId, status, { endTime, durationMs, error });
 
   if (active.releaseWdLock) active.releaseWdLock();
@@ -165,8 +196,10 @@ export const executionService = {
     const now = new Date().toISOString();
     const runDir = storeRepository.getRunDir(id);
 
-    console.log(`[execution] Created ${id} for ${agent.id}`);
-    console.log(`[execution] Dispatching ${id}`);
+    logger.info("execution_created", `Created ${id} for ${agent.id}`, { executionId: id, agentId: agent.id });
+    logger.info("execution_queued", `Dispatching ${id}`, { executionId: id, agentId: agent.id });
+
+    metricsService.recordExecutionStart();
 
     const record: ExecutionRecord = {
       id,
@@ -184,6 +217,7 @@ export const executionService = {
 
     const active: ActiveExecution = {
       handle: { cancel: () => {} },
+      agentId: agent.id,
       consumers: [],
       eventLog: [
         { type: "status", data: "queued", timestamp: now },
@@ -214,7 +248,7 @@ export const executionService = {
     const queueTimer = setTimeout(() => {
       if (!isLockAcquired) {
         const warnMsg = `[execution] Queued state warning: execution ${id} queued for >5s. Waiting for working-directory lock on ${agent.workingDirectory}...`;
-        console.warn(warnMsg);
+        logger.warn("execution_queued_warning", warnMsg, { executionId: id, agentId: agent.id, details: { workingDirectory: agent.workingDirectory } });
         appendLog(warnMsg);
         broadcast(active, id, "warning", `Execution queued for >5s. Waiting for working-directory lock...`);
       }
@@ -223,22 +257,37 @@ export const executionService = {
     // Acquire wd lock for agents with fixed-filename output files
     if (agent.usesWdLock) {
       broadcast(active, id, "status", "queued");
-      const release = await acquireWdLock(agent.workingDirectory, id, appendLog);
+      const release = await acquireWdLock(agent.workingDirectory, id, agent.id, appendLog);
       active.releaseWdLock = release;
     }
     isLockAcquired = true;
     clearTimeout(queueTimer);
 
-    console.log(`[execution] State -> running (${id})`);
+    logger.info("execution_started", `State -> running (${id})`, { executionId: id, agentId: agent.id });
     appendLog(`[execution] State -> running`);
     await storeRepository.updateStatus(id, "running", { startTime });
     broadcast(active, id, "status", "running");
+
+    const timeoutMs = getExecutionTimeoutMs();
+    active.timeoutTimer = setTimeout(() => {
+      if (active.finished) return;
+      const timeoutMsg = "Execution timed out exceeding max duration.";
+      logger.warn("execution_timed_out", `${timeoutMsg} (${id})`, { executionId: id, agentId: agent.id, details: { timeoutMs } });
+      appendLog(`[execution] ${timeoutMsg}`);
+      broadcast(active, id, "warning", timeoutMsg);
+      broadcast(active, id, "status", "timeout");
+      active.handle.cancel();
+      void handleTerminal(active, id, "timeout", timeoutMsg);
+    }, timeoutMs);
 
     const updatedAgent = { ...agent };
 
     if (agent.type === "python") {
       try {
+        logger.info("environment_resolution_started", `Resolving execution environment for agent: ${agent.id}`, { executionId: id, agentId: agent.id });
         appendLog(`[environment] Resolving execution environment for agent: ${agent.id}`);
+
+        const setupStart = Date.now();
         const res = await environmentResolver.resolve(
           agent.id,
           agent.logicalPath || agent.workingDirectory,
@@ -266,6 +315,15 @@ export const executionService = {
           appendLog(`[environment] Fallback managed runtime resolved: ${interpreterPath}`);
           broadcast(active, id, "log", `[environment] Fallback managed runtime resolved: ${interpreterPath}`);
         }
+
+        const setupDurationMs = Date.now() - setupStart;
+        metricsService.recordRuntimeSetup(setupDurationMs);
+        logger.info("environment_resolved", `Environment resolved: ${res.action}`, {
+          executionId: id,
+          agentId: agent.id,
+          durationMs: setupDurationMs,
+          details: { action: res.action, interpreterPath },
+        });
 
         updatedAgent.workingDirectory = res.resolvedSource.sourceRoot;
         updatedAgent.resolvedPath = res.resolvedSource.sourceRoot;
@@ -431,11 +489,10 @@ function buildFakeResponse(
           }
           if (
             parsed.type === "status" &&
-            (parsed.data === "completed" || parsed.data === "failed")
+            (parsed.data === "completed" || parsed.data === "failed" || parsed.data === "timeout")
           ) {
-            const status: ExecutionStatus =
-              parsed.data === "completed" ? "completed" : "failed";
-            void handleTerminal(active, execId, status, status === "failed" ? active.error : undefined);
+            const status: ExecutionStatus = parsed.data as ExecutionStatus;
+            void handleTerminal(active, execId, status, status === "failed" || status === "timeout" ? active.error : undefined);
             ended = true;
           }
         } catch {

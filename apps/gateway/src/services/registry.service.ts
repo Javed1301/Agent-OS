@@ -15,6 +15,7 @@ import type { AgentDefinition, AgentInputProperty } from "../types/agent.js";
 import { secretsService } from "./secrets.service.js";
 import { runtimeService } from "./runtime.service.js";
 import { environmentResolver } from "./environment-resolver.service.js";
+import { isValidAgentId } from "./path-safety.service.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -560,6 +561,13 @@ export const registryService = {
       return {
         success: false,
         error: "agent.yaml is missing required fields: id, name, entrypoint",
+      };
+    }
+
+    if (!isValidAgentId(manifest.id)) {
+      return {
+        success: false,
+        error: `Invalid agent ID '${manifest.id}'. Must be lowercase alphanumeric with hyphens (e.g. 'my-agent-1').`,
       };
     }
 

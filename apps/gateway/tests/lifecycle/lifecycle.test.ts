@@ -93,6 +93,9 @@ test.describe("Execution Lifecycle Integration Tests", () => {
     assert.ok(record.startTime);
     assert.strictEqual(record.endTime, undefined);
     assert.strictEqual(record.durationMs, undefined);
+
+    // Cleanup running execution so background watchdog timer is cleared
+    executionService.cancel(executionId);
   });
 
   // ==========================================================================
