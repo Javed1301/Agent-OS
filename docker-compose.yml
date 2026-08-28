@@ -1,6 +1,8 @@
 services:
   gateway:
-    build: ./apps/gateway
+    build:
+      context: .
+      dockerfile: apps/gateway/Dockerfile
     ports:
       - "8080:8080"
     env_file:
@@ -11,6 +13,7 @@ services:
       WORKSPACE_ROOT: /app
       DOCKER_ENV: "true"
       UV_CACHE_DIR: /root/.cache/uv
+      DATABASE_URL: "file:/app/data/agent-os.db"
     volumes:
       - ./data:/app/data
       - ./workflows:/app/workflows
@@ -27,9 +30,8 @@ services:
 
   dashboard:
     build:
-      context: ./apps/dashboard
-      args:
-        NEXT_PUBLIC_GATEWAY_URL: http://localhost:8080
+      context: .
+      dockerfile: apps/dashboard/Dockerfile
     ports:
       - "3000:3000"
     environment:

@@ -1,0 +1,14 @@
+node_modules
+**/node_modules
+.git
+.env
+.env.*
+*.log
+coverage
+dist
+apps/gateway/dist
+apps/dashboard/.next
+apps/dashboard/dist
+uv-cache
+runtimes
+data

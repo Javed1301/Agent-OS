@@ -56,18 +56,18 @@ function ensureDir(dir: string): void {
   }
 }
 
-function getDirectorySize(dirPath: string): number {
+async function getDirectorySizeAsync(dirPath: string): Promise<number> {
   if (!fs.existsSync(dirPath)) return 0;
   let totalSize = 0;
   try {
-    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    const entries = await fs.promises.readdir(dirPath, { withFileTypes: true });
     for (const entry of entries) {
       const fullPath = path.join(dirPath, entry.name);
       if (entry.isDirectory()) {
-        totalSize += getDirectorySize(fullPath);
+        totalSize += await getDirectorySizeAsync(fullPath);
       } else if (entry.isFile()) {
         try {
-          const stats = fs.statSync(fullPath);
+          const stats = await fs.promises.stat(fullPath);
           totalSize += stats.size;
         } catch {
           /* ignore */
@@ -78,6 +78,40 @@ function getDirectorySize(dirPath: string): number {
     /* ignore */
   }
   return totalSize;
+}
+
+const activeSizeCalculations = new Map<string, Promise<number>>();
+
+export async function computeAndPersistRuntimeSize(runtimeDir: string, runtimeHash: string, pythonShort = "py311"): Promise<number> {
+  const key = `${pythonShort}:${runtimeHash}`;
+  if (activeSizeCalculations.has(key)) {
+    return activeSizeCalculations.get(key)!;
+  }
+
+  const calculationPromise = (async () => {
+    try {
+      const size = await getDirectorySizeAsync(runtimeDir);
+      const metaPath = path.join(runtimeDir, "metadata.json");
+      if (fs.existsSync(metaPath)) {
+        try {
+          const raw = fs.readFileSync(metaPath, "utf-8");
+          const meta = JSON.parse(raw) as RuntimeMetadata;
+          meta.sizeBytes = size;
+          fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2), "utf-8");
+        } catch {
+          /* ignore JSON write errors */
+        }
+      }
+      return size;
+    } catch {
+      return 0;
+    } finally {
+      activeSizeCalculations.delete(key);
+    }
+  })();
+
+  activeSizeCalculations.set(key, calculationPromise);
+  return calculationPromise;
 }
 
 function getPythonInterpreterPath(runtimeDir: string): string {
@@ -236,7 +270,11 @@ export const runtimeService = {
     try {
       const raw = fs.readFileSync(metaPath, "utf-8");
       const meta = JSON.parse(raw) as RuntimeMetadata;
-      meta.sizeBytes = getDirectorySize(runtimeDir);
+      if (!meta.sizeBytes) {
+        meta.sizeBytes = 0;
+        // Trigger non-blocking deduplicated background calculation
+        computeAndPersistRuntimeSize(runtimeDir, runtimeHash, pythonShort).catch(() => {});
+      }
       return meta;
     } catch {
       return null;
@@ -254,9 +292,17 @@ export const runtimeService = {
   },
 
   /**
-   * Associate an agent with a runtime hash
+   * Associate an agent with a runtime hash.
+   * Automatically disassociates the agent from any previously associated runtimes.
    */
   associateAgent(runtimeHash: string, agentId: string, pythonShort = "py311"): void {
+    const allRuntimes = this.listRuntimes();
+    for (const rt of allRuntimes) {
+      if (rt.hash !== runtimeHash && rt.agents.includes(agentId)) {
+        this.disassociateAgent(rt.hash, agentId, rt.pythonShort || pythonShort);
+      }
+    }
+
     const meta = this.getMetadata(runtimeHash, pythonShort);
     if (!meta) return;
     if (!meta.agents.includes(agentId)) {
@@ -277,6 +323,43 @@ export const runtimeService = {
       meta.agents = meta.agents.filter((a) => a !== agentId);
       meta.agentCount = meta.agents.length;
       this.saveMetadata(meta);
+    }
+  },
+
+  /**
+   * Reconcile runtime agent associations against active agent mappings.
+   * Enforces the invariant:
+   * For every runtime, metadata.agents contains ONLY active agents whose current resolved runtimeHash matches that runtime.
+   */
+  reconcileAssociations(activeAgentRuntimes: Array<{ agentId: string; runtimeHash: string; pythonShort?: string }>): void {
+    const allRuntimes = this.listRuntimes();
+    if (allRuntimes.length === 0) return;
+
+    const activeMap = new Map<string, string>();
+    for (const item of activeAgentRuntimes) {
+      if (item.agentId && item.runtimeHash && item.runtimeHash !== "none") {
+        activeMap.set(item.agentId, item.runtimeHash);
+      }
+    }
+
+    for (const runtime of allRuntimes) {
+      const currentAgents = runtime.agents || [];
+      const validAgents = currentAgents.filter((agentId) => activeMap.get(agentId) === runtime.hash);
+
+      for (const [agentId, targetHash] of activeMap.entries()) {
+        if (targetHash === runtime.hash && !validAgents.includes(agentId)) {
+          validAgents.push(agentId);
+        }
+      }
+
+      if (
+        validAgents.length !== currentAgents.length ||
+        !validAgents.every((a, idx) => a === currentAgents[idx])
+      ) {
+        runtime.agents = validAgents;
+        runtime.agentCount = validAgents.length;
+        this.saveMetadata(runtime);
+      }
     }
   },
 
@@ -454,12 +537,15 @@ export const runtimeService = {
 
       // Finalize metadata
       initialMeta.state = "available";
-      initialMeta.sizeBytes = getDirectorySize(runtimeDir);
+      initialMeta.sizeBytes = initialMeta.sizeBytes || 0;
       initialMeta.durationMs = durationMs;
       initialMeta.stdout = installStdout.trim();
       initialMeta.stderr = installStderr.trim();
       initialMeta.packageCount = depInfo.packages.length;
       this.saveMetadata(initialMeta);
+
+      // Trigger background calculation without blocking response
+      computeAndPersistRuntimeSize(runtimeDir, runtimeHash, pythonShort).catch(() => {});
 
       log(`Runtime ${runtimeHash} built successfully in ${durationMs}ms.`);
 
@@ -482,7 +568,7 @@ export const runtimeService = {
         pythonShort,
         agents: agentId ? [agentId] : [],
         agentCount: agentId ? 1 : 0,
-        sizeBytes: getDirectorySize(runtimeDir),
+        sizeBytes: 0,
         createdAt: new Date().toISOString(),
         lastUsedAt: new Date().toISOString(),
         sourceHash: depInfo.sourceHash,

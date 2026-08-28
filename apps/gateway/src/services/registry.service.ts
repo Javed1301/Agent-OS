@@ -472,6 +472,10 @@ export const registryService = {
   async load(): Promise<void> {
     _agents = await loadAllAgents();
     _loaded = true;
+    const activeAgentRuntimes = _agents
+      .filter((a) => a.type === "python" && Boolean(a.runtime?.hash) && a.runtime?.hash !== "none")
+      .map((a) => ({ agentId: a.canonicalId || a.id, runtimeHash: a.runtime!.hash as string }));
+    runtimeService.reconcileAssociations(activeAgentRuntimes);
     console.log(`[registry] Loaded ${_agents.length} agents`);
   },
 
@@ -480,6 +484,10 @@ export const registryService = {
     _loaded = false;
     _agents = await loadAllAgents();
     _loaded = true;
+    const activeAgentRuntimes = _agents
+      .filter((a) => a.type === "python" && Boolean(a.runtime?.hash) && a.runtime?.hash !== "none")
+      .map((a) => ({ agentId: a.canonicalId || a.id, runtimeHash: a.runtime!.hash as string }));
+    runtimeService.reconcileAssociations(activeAgentRuntimes);
     console.log(`[registry] Reloaded ${_agents.length} agents`);
   },
 
