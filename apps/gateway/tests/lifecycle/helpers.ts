@@ -116,8 +116,13 @@ export async function cleanTables() {
 }
 
 export async function setupTestEnv() {
+  await prisma.$disconnect().catch(() => {});
   if (fs.existsSync(TEST_DATA_DIR)) {
-    fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true });
+    try {
+      fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true });
+    } catch {
+      // best effort if locked
+    }
   }
   fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
 
@@ -130,6 +135,7 @@ export async function setupTestEnv() {
 
 export async function teardownTestEnv() {
   await cleanTables();
+  await prisma.$disconnect().catch(() => {});
   if (fs.existsSync(TEST_DATA_DIR)) {
     try {
       fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true });
