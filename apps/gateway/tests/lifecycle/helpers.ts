@@ -105,8 +105,10 @@ export function makeExecution(overrides: Partial<ExecutionRecord> = {}): Executi
 
 export async function cleanTables() {
   try {
-    await prisma.execution.deleteMany();
-    await prisma.agent.deleteMany();
+    await prisma.$transaction([
+      prisma.execution.deleteMany(),
+      prisma.agent.deleteMany(),
+    ]);
   } catch (err) {
     console.error("cleanTables failed:", err);
     throw err;

@@ -177,7 +177,9 @@ test.describe("Metrics Integration & Double-Count Protection Tests", () => {
     fakeAdapter.script = [{ type: "status", data: "completed" }];
 
     const executionId = await executionService.execute(agent, { input: "double-count-check" });
-    await waitForTerminalState(executionId);
+    const terminalRecord = await waitForTerminalState(executionId);
+
+    assert.strictEqual(terminalRecord.status, "completed");
 
     const metricsAfterFirst = metricsService.getMetrics();
     assert.strictEqual(metricsAfterFirst.executions_completed, 1);
