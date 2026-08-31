@@ -166,7 +166,9 @@ async function handleTerminal(
   });
   storeRepository.appendLog(execId, `[execution] State -> ${status}`);
 
-  await storeRepository.updateStatus(execId, status, { endTime, durationMs, error });
+  await storeRepository.updateStatus(execId, status, { endTime, durationMs, error }).catch((err) => {
+    logger.warn("update_status_failed", `Could not update status for ${execId}: ${err instanceof Error ? err.message : String(err)}`);
+  });
 
   if (active.releaseWdLock) active.releaseWdLock();
   activeExecutions.delete(execId);
@@ -443,6 +445,28 @@ export const executionService = {
     active.handle.cancel();
     void handleTerminal(active, id, "cancelled");
     return true;
+  },
+
+  /**
+   * Resets all active execution state, cancels running timers, and clears locks (for test cleanup).
+   */
+  resetState(): void {
+    for (const active of activeExecutions.values()) {
+      if (active.timeoutTimer) {
+        clearTimeout(active.timeoutTimer);
+        active.timeoutTimer = undefined;
+      }
+      active.finished = true;
+      if (active.releaseWdLock) {
+        try {
+          active.releaseWdLock();
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+    activeExecutions.clear();
+    wdLocks.clear();
   },
 };
 

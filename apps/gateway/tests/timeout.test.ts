@@ -12,6 +12,7 @@ import {
   teardownTestEnv,
   waitForExecutionStatus,
   waitForTerminalState,
+  cleanTables,
   TEST_DATA_DIR,
 } from "./lifecycle/helpers.js";
 import { getExecutionTimeoutMs } from "../src/services/execution.service.js";
@@ -25,20 +26,28 @@ test.describe("Execution Timeout & Watchdog Tests", () => {
   });
 
   after(async () => {
-    process.env.EXECUTION_TIMEOUT_MS = originalEnvTimeout;
+    if (originalEnvTimeout !== undefined) {
+      process.env.EXECUTION_TIMEOUT_MS = originalEnvTimeout;
+    } else {
+      delete process.env.EXECUTION_TIMEOUT_MS;
+    }
     await teardownTestEnv();
   });
 
   beforeEach(async () => {
     fakeAdapter = new FakeAdapter();
     executionService._adapterOverride = fakeAdapter;
-    await prisma.execution.deleteMany();
-    await prisma.agent.deleteMany();
+    await cleanTables();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     executionService._adapterOverride = undefined;
-    process.env.EXECUTION_TIMEOUT_MS = originalEnvTimeout;
+    if (originalEnvTimeout !== undefined) {
+      process.env.EXECUTION_TIMEOUT_MS = originalEnvTimeout;
+    } else {
+      delete process.env.EXECUTION_TIMEOUT_MS;
+    }
+    await new Promise((res) => setTimeout(res, 50));
   });
 
   // ==========================================================================

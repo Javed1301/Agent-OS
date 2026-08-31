@@ -105,6 +105,8 @@ export function makeExecution(overrides: Partial<ExecutionRecord> = {}): Executi
 }
 
 export async function cleanTables() {
+  executionService.resetState();
+  await new Promise((res) => setTimeout(res, 50));
   try {
     await prisma.$transaction([
       prisma.execution.deleteMany(),

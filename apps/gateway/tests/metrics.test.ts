@@ -1,7 +1,7 @@
 import test, { before, after, beforeEach, afterEach } from "node:test";
 import assert from "node:assert";
 import { metricsService } from "../src/services/metrics.service.js";
-import { FakeAdapter, makeTestAgent, setupTestEnv, teardownTestEnv, waitForTerminalState, executionService, TEST_DATA_DIR } from "./lifecycle/helpers.js";
+import { FakeAdapter, makeTestAgent, setupTestEnv, teardownTestEnv, waitForTerminalState, executionService, TEST_DATA_DIR, cleanTables } from "./lifecycle/helpers.js";
 
 test.describe("Operational Metrics Service Unit Tests", () => {
   beforeEach(() => {
@@ -141,14 +141,16 @@ test.describe("Metrics Integration & Double-Count Protection Tests", () => {
     await teardownTestEnv();
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     fakeAdapter = new FakeAdapter();
     executionService._adapterOverride = fakeAdapter;
     metricsService.resetMetrics();
+    await cleanTables();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     executionService._adapterOverride = undefined;
+    await new Promise((res) => setTimeout(res, 50));
   });
 
   // 14 & 15. Verify /metrics and /api/metrics structure
