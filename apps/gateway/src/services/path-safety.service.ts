@@ -31,8 +31,17 @@ export function isValidAgentId(id: string): boolean {
  */
 export function isPathWithinRoot(candidate: string, root: string): boolean {
   if (!candidate || !root) return false;
+  if (candidate.includes("\0")) return false;
+
+  // Reject Windows-style absolute paths on POSIX systems where path.posix.isAbsolute does not catch them
+  if (process.platform !== "win32") {
+    if (path.win32.isAbsolute(candidate) || /^[a-zA-Z]:[\\/]/.test(candidate)) {
+      return false;
+    }
+  }
+
   const absRoot = path.resolve(root);
-  const absCandidate = path.resolve(candidate);
+  const absCandidate = path.resolve(absRoot, candidate);
   const rel = path.relative(absRoot, absCandidate);
   return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
 }
