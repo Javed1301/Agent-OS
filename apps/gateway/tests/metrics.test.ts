@@ -1,8 +1,7 @@
 import test, { before, after, beforeEach, afterEach } from "node:test";
 import assert from "node:assert";
 import { metricsService } from "../src/services/metrics.service.js";
-import { executionService } from "../src/services/execution.service.js";
-import { FakeAdapter, makeTestAgent, setupTestEnv, teardownTestEnv, waitForTerminalState } from "./lifecycle/helpers.js";
+import { FakeAdapter, makeTestAgent, setupTestEnv, teardownTestEnv, waitForTerminalState, executionService, TEST_DATA_DIR } from "./lifecycle/helpers.js";
 
 test.describe("Operational Metrics Service Unit Tests", () => {
   beforeEach(() => {
@@ -179,6 +178,7 @@ test.describe("Metrics Integration & Double-Count Protection Tests", () => {
     const executionId = await executionService.execute(agent, { input: "double-count-check" });
     const terminalRecord = await waitForTerminalState(executionId);
 
+    assert.ok(terminalRecord.runDir.startsWith(TEST_DATA_DIR));
     assert.strictEqual(terminalRecord.status, "completed");
 
     const metricsAfterFirst = metricsService.getMetrics();
