@@ -33,9 +33,9 @@ export function isPathWithinRoot(candidate: string, root: string): boolean {
   if (!candidate || !root) return false;
   if (candidate.includes("\0")) return false;
 
-  // Reject Windows-style absolute paths on POSIX systems where path.posix.isAbsolute does not catch them
+  // Reject Windows-style drive/UNC absolute paths on POSIX systems where path.posix.isAbsolute does not catch them
   if (process.platform !== "win32") {
-    if (path.win32.isAbsolute(candidate) || /^[a-zA-Z]:[\\/]/.test(candidate)) {
+    if (/^[a-zA-Z]:[\\/]|^\\\\/.test(candidate)) {
       return false;
     }
   }
