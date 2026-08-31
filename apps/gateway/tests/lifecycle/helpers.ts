@@ -4,9 +4,10 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WORKSPACE_ROOT = path.resolve(__dirname, "../../../..");
 const TEST_DATA_DIR = path.join(WORKSPACE_ROOT, "data", "test");
+const TEST_DB_PATH = path.join(TEST_DATA_DIR, "agent-os.test.db");
 
 // 1. Configure isolated test environment variables BEFORE importing production files
-process.env.DATABASE_URL = "file:../../../data/test/agent-os.test.db";
+process.env.DATABASE_URL = `file:${TEST_DB_PATH}`;
 process.env.TEST_ENV = "true";
 process.env.DATA_DIR = TEST_DATA_DIR;
 process.env.PERSISTENCE = "sqlite";
