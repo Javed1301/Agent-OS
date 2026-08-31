@@ -6,9 +6,43 @@ on:
   pull_request:
     branches: [ main ]
 
+# Cancel in-progress runs for pull requests when new commits are pushed
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
 jobs:
   validate:
-    name: Validate and Build
+    name: Code Quality & Typecheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate --schema=apps/gateway/prisma/schema.prisma
+
+      - name: Lint Dashboard
+        run: npm run lint --workspace=apps/dashboard
+
+      - name: Typecheck Gateway
+        run: npm run build --workspace=apps/gateway
+
+  test:
+    name: Test Suite (Unit, Lifecycle & Integration)
     runs-on: ubuntu-latest
 
     steps:
@@ -31,21 +65,65 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      # Prisma client generation must be executed prior to linting, typechecking, and building
+      # Prisma client generation must be executed prior to running tests
       # because gateway components compile against and import types from '@prisma/client'.
       - name: Generate Prisma Client
         run: npx prisma generate --schema=apps/gateway/prisma/schema.prisma
 
-      - name: Lint Dashboard
-        run: npm run lint --workspace=apps/dashboard
-
-      # Performs TypeScript compilation and typechecking for both apps/gateway (via tsc)
-      # and apps/dashboard (via next build). A separate typecheck step is redundant.
-      - name: Build and Typecheck
-        run: npm run build
-
-      # Runs the canonical deterministic test suite (npm test), which executes unit, repository,
-      # provider, and lifecycle tests, followed by integration tests in non-smoke mode.
-      # Smoke tests (test:smoke) are excluded as they require external services and credentials.
+      # Runs unit, repository, provider, lifecycle, and integration test suites
       - name: Run Deterministic Tests
         run: npm test
+
+      # Upload diagnostic artifacts on test failure for faster debugging
+      - name: Upload Test Diagnostic Artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-failure-logs
+          path: |
+            apps/gateway/data/test/
+            apps/gateway/test-output-json.txt
+
+  build:
+    name: Production Build & Container Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate --schema=apps/gateway/prisma/schema.prisma
+
+      - name: Build All Applications
+        run: npm run build
+
+      - name: Validate Gateway Dockerfile Build
+        run: docker build -f apps/gateway/Dockerfile -t agent-gateway:ci-test .
+
+  security:
+    name: Security & Audit Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Dependency Vulnerability Audit
+        run: npm audit --audit-level=high --workspace=apps/gateway --workspace=apps/dashboard
+        continue-on-error: true

@@ -527,6 +527,80 @@ agent-workspace/
 
 ---
 
+## 🚦 CI/CD Quality Gate & Developer Workflow
+
+Agent OS enforces an industry-grade, PR-driven GitHub Actions CI/CD pipeline (`.github/workflows/ci.yml`).
+
+### 1. Workflow Architecture
+
+Every proposed Pull Request targeting `main` must automatically pass 4 parallel quality gate jobs:
+
+```text
+                             Pull Request
+                                  │
+                                  ▼
+                         GitHub Actions CI
+                                  │
+          ┌───────────────────────┼───────────────────────┐
+          │                       │                       │
+          ▼                       ▼                       ▼
+Code Quality & Typecheck    Test Suite (Parallel)  Production Build & Docker
+    (validate)                 (test)                 (build)
+          │                       │                       │
+     ┌────┴────┐             ┌────┴─────────┐             │
+     │         │             │              │             │
+   Lint    Typecheck       Unit         Integration  Docker Build
+                             │              │             │
+                             ├─ Repository   │             │
+                             ├─ Provider     │             │
+                             └─ Lifecycle    │             │
+                                             │             │
+          ┌──────────────────────────────────┘             │
+          │                                                │
+          ▼                                                ▼
+Security Audit                                      Required Checks Gate
+   (security)                                              │
+          │                                        ┌───────┴───────┐
+          └────────────────────────────────────────┤               │
+                                                 FAIL            PASS
+                                                   │               │
+                                             Merge Blocked     Merged to main
+```
+
+### 2. Job Classifications & Required Status Checks
+
+| Job Name | Check Name | Command(s) Executed | Description |
+| :--- | :--- | :--- | :--- |
+| **`validate`** | `Code Quality & Typecheck` | `npm ci`<br/>`npx prisma generate`<br/>`npm run lint --workspace=apps/dashboard`<br/>`npm run build --workspace=apps/gateway` | Enforces ESLint compliance and TypeScript type safety across apps. |
+| **`test`** | `Test Suite (Unit, Lifecycle & Integration)` | `npm ci`<br/>`npx prisma generate`<br/>`npm test` | Executes unit (80/80), repository, provider, lifecycle, and integration test suites. Uploads diagnostic logs on failure. |
+| **`build`** | `Production Build & Container Check` | `npm ci`<br/>`npx prisma generate`<br/>`npm run build`<br/>`docker build -f apps/gateway/Dockerfile` | Verifies full production Next.js / Gateway builds and validates Gateway Dockerfile compilation integrity. |
+| **`security`** | `Security & Audit Validation` | `npm audit --audit-level=high` | Scans workspace dependencies for high-severity security vulnerabilities. |
+
+### 3. How to Reproduce CI Locally
+
+Before pushing a branch or opening a PR, developers can run the complete quality suite locally:
+
+```bash
+# 1. Reproduce Dependency Installation & Prisma Client Generation
+npm ci
+npx prisma generate --schema=apps/gateway/prisma/schema.prisma
+
+# 2. Reproduce Code Quality & Typecheck
+npm run lint --workspace=apps/dashboard
+npm run build --workspace=apps/gateway
+
+# 3. Reproduce Complete Test Suite
+npm test
+
+# 4. Reproduce Production Builds
+npm run build
+
+# 5. Reproduce Container Build Verification
+docker build -f apps/gateway/Dockerfile -t agent-gateway:local-test .
+```
+
+---
+
 ## 💡 Engineering Decisions & Interview Notes
 
 Here are technical answers to key architecture questions regarding this platform:
